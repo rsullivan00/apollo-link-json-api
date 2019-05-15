@@ -92,12 +92,12 @@ export namespace JsonApiLink {
     args: { [key: string]: any };
     /** Arguments added via @export(as: ) directives */
     exportVariables: { [key: string]: any };
-    /** Arguments passed directly to @rest(params: ) */
+    /** Arguments passed directly to @jsonapi(params: ) */
     // params: { [key: string]: any };
     /** Apollo Context */
     context: { [key: string]: any };
-    /** All arguments passed to the `@rest(...)` directive */
-    '@rest': { [key: string]: any };
+    /** All arguments passed to the `@jsonapi(...)` directive */
+    '@jsonapi': { [key: string]: any };
   }
   export interface PathBuilderProps extends JsonApiLinkHelperProps {
     replacer: (opts: JsonApiLinkHelperProps) => string;
@@ -815,7 +815,6 @@ interface RequestContext {
   responses: Response[];
 }
 
-// Rick: We can ignore this
 const addTypeToNode = (node, typename) => {
   if (node === null || node === undefined || typeof node !== 'object') {
     return node;
@@ -859,29 +858,23 @@ const resolver: Resolver = async (
   const aliasedNode = (root || {})[resultKey];
   const preAliasingNode = (root || {})[fieldName];
 
-  if (root && directives && directives.export) {
-    // @export(as:) is only supported with apollo-link-rest at this time
-    // so use the preAliasingNode as we're responsible for implementing aliasing!
-    exportVariables[directives.export.as] = preAliasingNode;
-  }
-
   const isATypeCall = directives && directives.type;
 
   if (!isLeaf && isATypeCall) {
-    // @type(name: ) is only supported inside apollo-link-rest at this time
+    // @type(name: ) is only supported inside apollo-link-json-api at this time
     // so use the preAliasingNode as we're responsible for implementing aliasing!
-    // Also: exit early, since @type(name: ) && @rest() can't both exist on the same node.
-    if (directives.rest) {
+    // Also: exit early, since @type(name: ) && @jsonapi() can't both exist on the same node.
+    if (directives.jsonapi) {
       throw new Error(
-        'Invalid use of @type(name: ...) directive on a call that also has @rest(...)',
+        'Invalid use of @type(name: ...) directive on a call that also has @jsonapi(...)',
       );
     }
     return addTypeToNode(preAliasingNode, directives.type.name);
   }
 
-  const isNotARestCall = !directives || !directives.rest;
-  if (isNotARestCall) {
-    // This is not tagged with @rest()
+  const isNotAJsonApiCall = !directives || !directives.jsonapi;
+  if (isNotAJsonApiCall) {
+    // This is not tagged with @jsonapi()
     // This might not belong to us so return the aliasNode version preferentially
     return copyExportVariables(aliasedNode || preAliasingNode);
   }
@@ -906,7 +899,7 @@ const resolver: Resolver = async (
     path,
     endpoint,
     pathBuilder,
-  } = directives.rest as JsonApiLink.DirectiveOptions;
+  } = directives.jsonapi as JsonApiLink.DirectiveOptions;
 
   const endpointOption = getEndpointOptions(endpoints, endpoint);
   const neitherPathsProvided = path == null && pathBuilder == null;
@@ -928,7 +921,7 @@ const resolver: Resolver = async (
     args,
     exportVariables,
     context,
-    '@rest': directives.rest,
+    '@jsonapi': directives.jsonapi,
     replacer: pathBuilder,
   };
   const pathWithParams = pathBuilder(allParams);
@@ -936,42 +929,18 @@ const resolver: Resolver = async (
   let {
     method,
     type,
-    bodyBuilder,
-    bodyKey,
     fieldNameDenormalizer: perRequestNameDenormalizer,
     bodySerializer,
   } = directives.rest as JsonApiLink.DirectiveOptions;
   if (!method) {
     method = 'GET';
   }
-  if (!bodyKey) {
-    bodyKey = 'input';
-  }
 
   let body = undefined;
   let overrideHeaders: Headers = undefined;
   if (-1 === ['GET', 'DELETE'].indexOf(method)) {
-    // Prepare our body!
-    if (!bodyBuilder) {
-      // By convention GraphQL recommends mutations having a single argument named "input"
-      // https://dev-blog.apollodata.com/designing-graphql-mutations-e09de826ed97
-
-      const maybeBody =
-        allParams.exportVariables[bodyKey] ||
-        (allParams.args && allParams.args[bodyKey]);
-      if (!maybeBody) {
-        throw new Error(
-          `[GraphQL ${method} ${operationType} using a REST call without a body]. No \`${bodyKey}\` was detected. Pass bodyKey, or bodyBuilder to the @rest() directive to resolve this.`,
-        );
-      }
-
-      bodyBuilder = (argsWithExport: object) => {
-        return maybeBody;
-      };
-    }
-
     body = convertObjectKeys(
-      bodyBuilder(allParams),
+      params => params.input,
       perRequestNameDenormalizer ||
         linkLevelNameDenormalizer ||
         noOpNameNormalizer,

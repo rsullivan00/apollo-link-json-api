@@ -349,7 +349,14 @@ describe('Query single call', () => {
       }),
     );
 
-    expect(data).toMatchObject({ post: { ...post, __typename: 'Posts' } });
+    expect(data).toMatchObject({
+      post: {
+        id: '1',
+        type: 'posts',
+        title: 'Love apollo',
+        __typename: 'Posts',
+      },
+    });
   });
 
   it.skip('can get query params regardless of the order', async () => {
