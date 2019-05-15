@@ -1,47 +1,43 @@
----
-title: REST Link
----
-
-## ⚠️ This library is under active development ⚠️
-
-This library is under active development. For information on progress check out [this issues](https://github.com/apollographql/apollo-link-rest/issues) or [the design](./designs/initial.md). We would love your help with writing docs, testing, anything! We would love for you, yes you, to be a part of the Apollo community!
+# JSON API Link
 
 ## Purpose
-An Apollo Link to easily try out GraphQL without a full server. It can be used to prototype, with third-party services that don't have a GraphQL endpoint or in a transition from REST to GraphQL.
+
+An Apollo Link to easily use GraphQL with a JSON API compliant server.
 
 ## Installation
 
+
 ```bash
-npm install apollo-link-rest apollo-link graphql graphql-anywhere qs --save # or `yarn add apollo-link-rest apollo-link graphql graphql-anywhere qs`
+npm install apollo-link-json-api apollo-link graphql graphql-anywhere qs --save # or `yarn add apollo-link-rest apollo-link graphql graphql-anywhere qs`
 ```
 
-`apollo-link`, `graphql`, `qs` and `graphql-anywhere` are peer dependencies needed by `apollo-link-rest`.
+`apollo-link`, `graphql`, `qs` and `graphql-anywhere` are peer dependencies needed by `apollo-link-json-api`.
 
 ## Usage
 
 ### Basics
 
 ```js
-import { RestLink } from "apollo-link-rest";
+import { JsonApiLink } from "apollo-link-json-api";
 // Other necessary imports...
 
-// Create a RestLink for the REST API
-// If you are using multiple link types, restLink should go before httpLink,
-// as httpLink will swallow any calls that should be routed through rest!
-const restLink = new RestLink({
-  uri: 'https://swapi.co/api/',
+// Create a JsonApiLink for the JSON API
+// If you are using multiple link types, jsonApiLink should go before httpLink,
+// as httpLink will swallow any calls that should be routed through jsonApi!
+const jsonApiLink = new JsonApiLink({
+  uri: 'http://jsonapiplayground.reyesoft.com/v2/',
 });
 
-// Configure the ApolloClient with the default cache and RestLink
+// Configure the ApolloClient with the default cache and JsonApiLink
 const client = new ApolloClient({
-  link: restLink,
+  link: jsonApiLink,
   cache: new InMemoryCache(),
 });
 
-// A simple query to retrieve data about the first person
+// A simple query to retrieve data about the first author
 const query = gql`
-  query luke {
-    person @rest(type: "Person", path: "people/1/") {
+  query firstAuthor {
+    author @jsonApi(path: "authors/1") {
       name
     }
   }
@@ -52,20 +48,6 @@ client.query({ query }).then(response => {
   console.log(response.data.name);
 });
 ```
-
-[![Edit Basic Example](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/github/apollographql/apollo-link-rest/tree/master/examples/simple)
-
-### Apollo Client & React Apollo
-
-For an example of using REST Link with Apollo Client and React Apollo view this CodeSandbox:
-
-[![Edit Advanced Example](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/github/apollographql/apollo-link-rest/tree/master/examples/advanced)
-
-### TypeScript
-
-For an example of using REST Link with Apollo Client, React Apollo and TypeScript view this CodeSandbox:
-
-[![Edit TypeScript Example](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/github/apollographql/apollo-link-rest/tree/master/examples/typescript)
 
 ## Options
 
@@ -80,14 +62,10 @@ REST Link takes an object with some options on it to customize the behavior of t
 
 ## Context
 
-REST Link uses the `headers` field on the context to allow passing headers to the HTTP request. It also supports the `credentials` field for defining credentials policy.
+JSON API Link uses the `headers` field on the context to allow passing headers to the HTTP request. It also supports the `credentials` field for defining credentials policy.
 
 - `headers`: an object representing values to be sent as headers on the request
 - `credentials`: a string representing the credentials policy you want for the fetch call
-
-## Documentation
-
-For a complete `apollo-link-rest` reference visit the documentation website at: https://www.apollographql.com/docs/link/links/rest.html
 
 ## Contributing
 
@@ -108,5 +86,5 @@ To run the library locally in another project, you can do the following:
 npm link
 
 # in the project you want to run this in
-npm link apollo-link-rest
+npm link apollo-link-json-api
 ```
