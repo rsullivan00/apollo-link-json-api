@@ -25,3 +25,11 @@ export function removeRestSetsFromDocument(query: DocumentNode): DocumentNode {
   removed.set(query, docClone);
   return docClone;
 }
+
+export const mapObject = (obj, fn) =>
+  Object.entries(obj)
+    .map(fn)
+    .reduce((acc, [k, v]) => {
+      acc[k] = v;
+      return acc;
+    }, {});

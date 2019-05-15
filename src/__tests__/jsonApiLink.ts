@@ -406,10 +406,11 @@ describe('Query single call', () => {
 
     const tagsQuery = gql`
       query tags {
-        tags @rest(type: "[Tag]", path: "/tags") {
+        tags @jsonapi(type: "[Tag]", path: "/tags") {
           name
         }
-        keywordGroups @rest(type: "[ [ Keyword ] ]", path: "/keywordGroups") {
+        keywordGroups
+          @jsonapi(type: "[ [ Keyword ] ]", path: "/keywordGroups") {
           name
         }
       }
@@ -449,7 +450,7 @@ describe('Query single call', () => {
 
     const postTitleQuery = gql`
       query postTitle {
-        post @rest(type: "Post", path: "/post/1") {
+        post @jsonapi(type: "Post", path: "/post/1") {
           id
           title
         }
@@ -475,7 +476,7 @@ describe('Query single call', () => {
 
     const postTitleQuery = gql`
       query postTitle {
-        post @rest(type: "Post", path: "/post/1") {
+        post @jsonapi(type: "Post", path: "/post/1") {
           id
           title
         }
@@ -502,7 +503,7 @@ describe('Query single call', () => {
 
     const postTitleQuery = gql`
       query postTitle {
-        post(id: $id) @rest(type: "Post", path: "/post/:id") {
+        post(id: $id) @jsonapi(type: "Post", path: "/post/:id") {
           id
           title
         }
@@ -531,7 +532,7 @@ describe('Query single call', () => {
     const feedQuery = gql`
       query feed {
         post(offset: $offset)
-          @rest(type: "Post", path: "/feed?offset=:offset") {
+          @jsonapi(type: "Post", path: "/feed?offset=:offset") {
           id
           title
         }
@@ -560,7 +561,7 @@ describe('Query single call', () => {
     const feedQuery = gql`
       query feed {
         post(published: $published)
-          @rest(type: "Post", path: "/feed?published=:published") {
+          @jsonapi(type: "Post", path: "/feed?published=:published") {
           id
           title
         }
@@ -589,7 +590,7 @@ describe('Query single call', () => {
     const peopleWithoutAddressQuery = gql`
       query feed {
         people(address: $address)
-          @rest(type: "Person", path: "/people?address=:address") {
+          @jsonapi(type: "Person", path: "/people?address=:address") {
           name
         }
       }
@@ -618,7 +619,8 @@ describe('Query single call', () => {
 
     const postTitleQuery1 = gql`
       query postTitle($id: ID!) {
-        post(id: $id) @rest(type: "Post", path: "/post/:id", endpoint: "v1") {
+        post(id: $id)
+          @jsonapi(type: "Post", path: "/post/:id", endpoint: "v1") {
           id
           title
         }
@@ -626,7 +628,8 @@ describe('Query single call', () => {
     `;
     const postTitleQuery2 = gql`
       query postTitle($id: ID!) {
-        post(id: $id) @rest(type: "Post", path: "/post/:id", endpoint: "v2") {
+        post(id: $id)
+          @jsonapi(type: "Post", path: "/post/:id", endpoint: "v2") {
           id
           titleText
         }
@@ -672,13 +675,13 @@ describe('Query single call', () => {
 
     const postTitleQuery = gql`
       query postTitle {
-        post @rest(type: "Post", path: "/post/1") {
+        post @jsonapi(type: "Post", path: "/post/1") {
           id
           title
           nested {
             data
             secondNestKey @export(as: innerNest)
-            test @rest(type: "Inner", path: "/post/:innerNest") {
+            test @jsonapi(type: "Inner", path: "/post/:innerNest") {
               positive
             }
           }
@@ -711,7 +714,7 @@ describe('Query single call', () => {
 
     const queryWithNoContent = gql`
       query noContent {
-        noContentResponse @rest(type: "NoContent", path: "/no-content") {
+        noContentResponse @jsonapi(type: "NoContent", path: "/no-content") {
           hasNoContent
         }
       }
@@ -745,7 +748,7 @@ describe('Query single call', () => {
 
     const errorWithNoContent = gql`
       query noContent {
-        noContentResponse @rest(type: "NoContent", path: "/no-content") {
+        noContentResponse @jsonapi(type: "NoContent", path: "/no-content") {
           hasNoContent
         }
       }
@@ -786,7 +789,7 @@ describe('Use a custom pathBuilder', () => {
         $otherStatus: String
       ) {
         posts(status: $status, otherStatus: $otherStatus)
-          @rest(type: "Post", pathBuilder: $pathFunction) {
+          @jsonapi(type: "Post", pathBuilder: $pathFunction) {
           id
           title
         }
@@ -894,7 +897,7 @@ describe('Use a custom pathBuilder', () => {
     const nonEncodedQuery = gql`
       query postQuery($name: String) {
         posts(name: $name)
-          @rest(type: "Post", path: "/posts?name={args.name}") {
+          @jsonapi(type: "Post", path: "/posts?name={args.name}") {
           id
           title
         }
@@ -902,7 +905,7 @@ describe('Use a custom pathBuilder', () => {
     `;
     const encodedQuery = gql`
       query postQuery($name: String) {
-        posts(name: $name) @rest(type: "Post", path: "/posts?{args}") {
+        posts(name: $name) @jsonapi(type: "Post", path: "/posts?{args}") {
           id
           title
         }
@@ -911,7 +914,7 @@ describe('Use a custom pathBuilder', () => {
     const mixedQuery = gql`
       query postQuery($id: String, $query: Any) {
         posts(id: $id, query: $query)
-          @rest(type: "Post", path: "/posts/{args.id}?{args.query}") {
+          @jsonapi(type: "Post", path: "/posts/{args.id}?{args.query}") {
           id
           title
         }
@@ -950,7 +953,7 @@ describe('Use a custom pathBuilder', () => {
   });
   // TODO: Test for Path using context
   // TODO: Test for PathBuilder using replacer
-  // TODO: Test for PathBuilder using @rest
+  // TODO: Test for PathBuilder using @jsonapi
 });
 
 describe('Query multiple calls', () => {
@@ -971,11 +974,11 @@ describe('Query multiple calls', () => {
 
     const postAndTags = gql`
       query postAndTags {
-        post @rest(type: "Post", path: "/post/1") {
+        post @jsonapi(type: "Post", path: "/post/1") {
           id
           title
         }
-        tags @rest(type: "[Tag]", path: "/tags") {
+        tags @jsonapi(type: "[Tag]", path: "/tags") {
           name
         }
       }
@@ -1006,10 +1009,10 @@ describe('Query multiple calls', () => {
 
     const postAndTags = gql`
       query postAndTags {
-        post @rest(type: "Post", path: "/post/1") {
+        post @jsonapi(type: "Post", path: "/post/1") {
           id
           title
-          tags @rest(type: "[Tag]", path: "/tags") {
+          tags @jsonapi(type: "[Tag]", path: "/tags") {
             name
           }
         }
@@ -1042,11 +1045,11 @@ describe('Query multiple calls', () => {
 
     const postAndTags = gql`
       query postAndTags {
-        post @rest(type: "Post", path: "/post/1") {
+        post @jsonapi(type: "Post", path: "/post/1") {
           id
           title
         }
-        tags @rest(type: "[Tag]", path: "/tags") {
+        tags @jsonapi(type: "[Tag]", path: "/tags") {
           name
         }
       }
@@ -1082,12 +1085,12 @@ describe('GraphQL aliases should work', async () => {
     const postTitleQueries = gql`
       query postTitle($id: ID!) {
         v1: post(id: $id)
-          @rest(type: "Post", path: "/post/:id", endpoint: "v1") {
+          @jsonapi(type: "Post", path: "/post/:id", endpoint: "v1") {
           id
           title
         }
         v2: post(id: $id)
-          @rest(type: "Post", path: "/post/:id", endpoint: "v2") {
+          @jsonapi(type: "Post", path: "/post/:id", endpoint: "v2") {
           id
           titleText
         }
@@ -1116,7 +1119,7 @@ describe('GraphQL aliases should work', async () => {
 
     const postTitleQueries = gql`
       query postTitle($id: ID!) {
-        post(id: $id) @rest(type: "Post", path: "/post/:id") {
+        post(id: $id) @jsonapi(type: "Post", path: "/post/:id") {
           id
           title: titleText
         }
@@ -1269,10 +1272,10 @@ describe('Query options', () => {
 
       const postAndTags = gql`
         query postAndTags {
-          post @rest(type: "Post", path: "/post/1") {
+          post @jsonapi(type: "Post", path: "/post/1") {
             id
             title
-            tags @rest(type: "[Tag]", path: "/tags") {
+            tags @jsonapi(type: "[Tag]", path: "/tags") {
               name
             }
           }
@@ -1299,7 +1302,8 @@ describe('Query options', () => {
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @rest(type: "Post", path: "/post/:id", method: "GET") {
+          post(id: "1")
+            @jsonapi(type: "Post", path: "/post/:id", method: "GET") {
             id
             title
           }
@@ -1330,7 +1334,7 @@ describe('Query options', () => {
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @rest(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
             id
             title
           }
@@ -1359,7 +1363,7 @@ describe('Query options', () => {
       fetchMock.get('/api/posts', []);
       const postsQuery = gql`
         query posts {
-          posts @rest(type: "Post", path: "/posts") {
+          posts @jsonapi(type: "Post", path: "/posts") {
             id
           }
         }
@@ -1411,7 +1415,7 @@ describe('Query options', () => {
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @rest(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
             id
             title
           }
@@ -1443,7 +1447,7 @@ describe('Query options', () => {
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @rest(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
             id
             title
           }
@@ -1499,7 +1503,7 @@ describe('Query options', () => {
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @rest(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
             id
             title
           }
@@ -1562,7 +1566,7 @@ describe('Query options', () => {
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @rest(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
             id
             title
           }
@@ -1614,7 +1618,7 @@ describe('Query options', () => {
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @rest(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
             id
             title
           }
@@ -1661,7 +1665,7 @@ describe('Query options', () => {
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @rest(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
             id
             title
           }
@@ -1706,7 +1710,7 @@ describe('Mutation', () => {
 
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @rest(type: "Post", path: "/posts/new", method: "POST") {
+            @jsonapi(type: "Post", path: "/posts/new", method: "POST") {
             id
             title
           }
@@ -1744,7 +1748,7 @@ describe('Mutation', () => {
 
         mutation changePost($id: ID!, $input: ReplaceablePostInput!) {
           replacedPost(id: $id, input: $input)
-            @rest(type: "Post", path: "/posts/:id", method: "PUT") {
+            @jsonapi(type: "Post", path: "/posts/:id", method: "PUT") {
             id
             title
           }
@@ -1783,7 +1787,7 @@ describe('Mutation', () => {
 
         mutation editPost($id: ID!, $input: PartialPostInput!) {
           editedPost(id: $id, input: $input)
-            @rest(type: "Post", path: "/posts/:id", method: "PATCH") {
+            @jsonapi(type: "Post", path: "/posts/:id", method: "PATCH") {
             id
             title
             categoryId
@@ -1816,7 +1820,7 @@ describe('Mutation', () => {
       const replacePostMutation = gql`
         mutation deletePost($id: ID!) {
           deletePostResponse(id: $id)
-            @rest(type: "Post", path: "/posts/:id", method: "DELETE") {
+            @jsonapi(type: "Post", path: "/posts/:id", method: "DELETE") {
             NoResponse
           }
         }
@@ -1861,7 +1865,7 @@ describe('Mutation', () => {
 
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @rest(type: "Post", path: "/posts", method: "POST") {
+            @jsonapi(type: "Post", path: "/posts", method: "POST") {
             id
             title
           }
@@ -1902,7 +1906,7 @@ describe('Mutation', () => {
 
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @rest(type: "Post", path: "/posts", method: "POST") {
+            @jsonapi(type: "Post", path: "/posts", method: "POST") {
             id
             title
           }
@@ -1941,7 +1945,7 @@ describe('Mutation', () => {
 
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @rest(type: "Post", path: "/posts", method: "POST") {
+            @jsonapi(type: "Post", path: "/posts", method: "POST") {
             title
           }
         }
@@ -1982,7 +1986,7 @@ describe('Mutation', () => {
 
       mutation publishPost($input: PublishablePostInput!) {
         publishedPost(input: $input)
-          @rest(type: "Post", path: "/posts", method: "POST") {
+          @jsonapi(type: "Post", path: "/posts", method: "POST") {
           id
           title
         }
@@ -2029,7 +2033,7 @@ describe('Mutation', () => {
 
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @rest(type: "Post", path: "/posts/new", method: "POST") {
+            @jsonapi(type: "Post", path: "/posts/new", method: "POST") {
             id
             titleString
             categoryId
@@ -2080,7 +2084,7 @@ describe('Mutation', () => {
 
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @rest(
+            @jsonapi(
               type: "Post"
               path: "/posts/new"
               method: "POST"
@@ -2148,7 +2152,11 @@ describe('Mutation', () => {
 
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @rest(type: "Post", path: "/posts/newComplexPost", method: "POST") {
+            @jsonapi(
+              type: "Post"
+              path: "/posts/newComplexPost"
+              method: "POST"
+            ) {
             id
             title
             items
@@ -2200,7 +2208,11 @@ describe('Mutation', () => {
 
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @rest(type: "Post", path: "/posts/newComplexPost", method: "POST") {
+            @jsonapi(
+              type: "Post"
+              path: "/posts/newComplexPost"
+              method: "POST"
+            ) {
             id
             title
             items
@@ -2243,7 +2255,7 @@ describe('Mutation', () => {
           $someApiWithACustomBodyKey: PublishablePostInput!
         ) {
           publishedPost(someApiWithACustomBodyKey: $someApiWithACustomBodyKey)
-            @rest(
+            @jsonapi(
               type: "Post"
               path: "/posts/new"
               method: "POST"
@@ -2288,7 +2300,7 @@ describe('Mutation', () => {
           $customBuilder: any
         ) {
           publishedPost(input: $input)
-            @rest(
+            @jsonapi(
               type: "Post"
               path: "/posts/new"
               method: "POST"
@@ -2324,7 +2336,7 @@ describe('Mutation', () => {
               args: { input: { title: post.title } },
               exportVariables: {},
               context: {},
-              '@rest': {},
+              '@jsonapi': {},
             }),
           ),
         }),
@@ -2341,7 +2353,7 @@ describe('Mutation', () => {
       const getPostQuery = gql`
         query getPost($id: ID!) {
           post(input: { id: $id })
-            @rest(type: "Post", path: "/post-to-get-post", method: "POST") {
+            @jsonapi(type: "Post", path: "/post-to-get-post", method: "POST") {
             id
             title
           }
@@ -2371,7 +2383,7 @@ describe('Mutation', () => {
 
       const createPostMutation = gql`
         mutation createPost {
-          sendPost @rest(type: "Post", path: "/posts/new", method: "POST") {
+          sendPost @jsonapi(type: "Post", path: "/posts/new", method: "POST") {
             id
             title
           }
@@ -2386,13 +2398,13 @@ describe('Mutation', () => {
       ).catch(e =>
         expect(e).toEqual(
           new Error(
-            '[GraphQL POST mutation using a REST call without a body]. No `input` was detected. Pass bodyKey, or bodyBuilder to the @rest() directive to resolve this.',
+            '[GraphQL POST mutation using a REST call without a body]. No `input` was detected. Pass bodyKey, or bodyBuilder to the @jsonapi() directive to resolve this.',
           ),
         ),
       );
     });
     // TODO: Test for BodyBuilder using context
-    // TODO: Test for BodyBuilder using @rest
+    // TODO: Test for BodyBuilder using @jsonapi
   });
 
   describe('bodySerializer', () => {
@@ -2429,7 +2441,11 @@ describe('Mutation', () => {
 
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @rest(type: "Post", path: "/posts/newComplexPost", method: "POST") {
+            @jsonapi(
+              type: "Post"
+              path: "/posts/newComplexPost"
+              method: "POST"
+            ) {
             id
             title
             items
@@ -2495,7 +2511,7 @@ describe('Mutation', () => {
           $bodySerializer: any
         ) {
           publishedPost(input: $input)
-            @rest(
+            @jsonapi(
               type: "Post"
               path: "/posts/newComplexPost"
               method: "POST"
@@ -2573,7 +2589,7 @@ describe('Mutation', () => {
           $bodySerializer: any
         ) {
           publishedPost(input: $input)
-            @rest(
+            @jsonapi(
               type: "Post"
               path: "/posts/newComplexPost"
               method: "POST"
@@ -2584,7 +2600,7 @@ describe('Mutation', () => {
             items
           }
           fakePublishedPost: publishedPost(input: $input)
-            @rest(
+            @jsonapi(
               type: "Post"
               path: "/posts/newComplexPost"
               method: "POST"
@@ -2682,7 +2698,7 @@ describe('Mutation', () => {
 
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @rest(
+            @jsonapi(
               type: "Post"
               path: "/posts/newComplexPost"
               method: "POST"
@@ -2726,7 +2742,7 @@ describe('Mutation', () => {
       const createPostMutation = gql`
         mutation CreatePost($input: any!) {
           createPost(input: $input)
-            @rest(
+            @jsonapi(
               type: "Post"
               method: "POST"
               path: "/posts/createPost"
@@ -2789,10 +2805,10 @@ describe('export directive', () => {
 
     const postTagWithoutExport = gql`
       query postTitle {
-        post(id: "1") @rest(type: "Post", path: "/post/:id") {
+        post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
           tagId
           title
-          tag @rest(type: "Tag", path: "/tag/:tagId") {
+          tag @jsonapi(type: "Tag", path: "/tag/:tagId") {
             name
           }
         }
@@ -2828,10 +2844,10 @@ describe('export directive', () => {
 
     const postTagExport = gql`
       query postTitle {
-        post(id: "1") @rest(type: "Post", path: "/post/:id") {
+        post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
           tagId @export(as: "tagId")
           title
-          tag @rest(type: "Tag", path: "/tag/:tagId") {
+          tag @jsonapi(type: "Tag", path: "/tag/:tagId") {
             name
           }
         }
@@ -2863,14 +2879,14 @@ describe('export directive', () => {
 
     const postTagExport = gql`
       query postTitle {
-        post(id: "1") @rest(type: "Post", path: "/post/:id") {
+        post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
           tagId @export(as: "tagId")
           postAuthor @export(as: "authorId")
           title
-          tag @rest(type: "Tag", path: "/tag/:tagId") {
+          tag @jsonapi(type: "Tag", path: "/tag/:tagId") {
             name
           }
-          author @rest(type: "User", path: "/users/:authorId") {
+          author @jsonapi(type: "User", path: "/users/:authorId") {
             name
           }
         }
@@ -2937,14 +2953,14 @@ describe('export directive', () => {
 
     const userPostsWithTagDetails = gql`
       query userPostsWithTagDetails {
-        user @rest(path: "/user") {
+        user @jsonapi(path: "/user") {
           id
           posts {
             id @export(as: "postId")
             tags {
               id @export(as: "tagId")
               details
-                @rest(
+                @jsonapi(
                   path: "/posts/{exportVariables.postId}/tags/{exportVariables.tagId}"
                 ) {
                 id
@@ -2990,7 +3006,7 @@ describe('Apollo client integration', () => {
 
     const postTagExport = gql`
       query {
-        post @rest(type: "Post", path: "/post/1") {
+        post @jsonapi(type: "Post", path: "/post/1") {
           id
           title
         }
@@ -3019,7 +3035,7 @@ describe('Apollo client integration', () => {
 
     const postTagExport = gql`
       query {
-        post @rest(type: "Post", path: "/post/1") {
+        post @jsonapi(type: "Post", path: "/post/1") {
           id
           title
         }
@@ -3054,11 +3070,11 @@ describe('Apollo client integration', () => {
 
     const postTitleQuery = gql`
       query postTitle {
-        post @rest(type: "Post", path: "/post/1") {
+        post @jsonapi(type: "Post", path: "/post/1") {
           id
           title
           unfairCriticism
-          comments @rest(type: "Comment", path: "/post/1/comments") {
+          comments @jsonapi(type: "Comment", path: "/post/1/comments") {
             id
             text
             spammyContent
@@ -3250,7 +3266,7 @@ describe('Playing nice with others', () => {
     const link = from([restLink, httpLink]);
     const restQuery = gql`
       query {
-        people @rest(type: "[Post]", path: "/posts") {
+        people @jsonapi(type: "[Post]", path: "/posts") {
           title
         }
       }
@@ -3267,7 +3283,7 @@ describe('Playing nice with others', () => {
         authors {
           id
         }
-        people @rest(type: "[Post]", path: "/posts") {
+        people @jsonapi(type: "[Post]", path: "/posts") {
           title
         }
       }
@@ -3310,7 +3326,7 @@ describe('Playing nice with others', () => {
       query {
         authors {
           id @export(as: "id")
-          posts @rest(type: "[Post]", path: "/posts/{exportVariables.id}") {
+          posts @jsonapi(type: "[Post]", path: "/posts/{exportVariables.id}") {
             title
           }
         }
@@ -3350,7 +3366,7 @@ describe('Playing nice with others', () => {
         authors {
           id
         }
-        people @rest(type: "[Post]", path: "/posts") {
+        people @jsonapi(type: "[Post]", path: "/posts") {
           title
         }
       }
@@ -3383,7 +3399,7 @@ describe('Playing nice with others', () => {
         lastViewedAuthor @client {
           id
         }
-        posts @rest(type: "[Post]", path: "/posts") {
+        posts @jsonapi(type: "[Post]", path: "/posts") {
           title
         }
       }
@@ -3413,7 +3429,7 @@ describe('Playing nice with others', () => {
       query {
         lastViewedAuthor @client {
           id
-          people @rest(type: "[Post]", path: "/posts") {
+          people @jsonapi(type: "[Post]", path: "/posts") {
             title
           }
         }
@@ -3449,7 +3465,8 @@ describe('Playing nice with others', () => {
           id
           lastViewedAuthor @client {
             id @export(as: "id")
-            posts @rest(type: "[Post]", path: "/posts/{exportVariables.id}") {
+            posts
+              @jsonapi(type: "[Post]", path: "/posts/{exportVariables.id}") {
               title
               meta @type(name: "Meta") {
                 creatorId

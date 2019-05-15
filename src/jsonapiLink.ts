@@ -25,6 +25,7 @@ import {
   isInlineFragment,
   resultKeyNameFromField,
 } from 'apollo-utilities';
+import jsonApiTransformer from './jsonApiTransformer';
 
 import { graphql } from 'graphql-anywhere/lib/async';
 import { Resolver, ExecInfo } from 'graphql-anywhere';
@@ -39,7 +40,6 @@ export namespace JsonApiLink {
 
   export interface EndpointOptions {
     uri: Endpoint;
-    responseTransformer?: ResponseTransformer | null;
   }
 
   export interface Endpoints {
@@ -84,8 +84,6 @@ export namespace JsonApiLink {
     request: RequestInfo,
     init: RequestInit,
   ) => Promise<Response>;
-
-  export type ResponseTransformer = (data: any, typeName: string) => any;
 
   export interface JsonApiLinkHelperProps {
     /** Arguments passed in via normal graphql parameters */
@@ -182,14 +180,9 @@ export namespace JsonApiLink {
      * @default JSON serialization
      */
     defaultSerializer?: Serializer;
-
-    /**
-     * Parse the response body of an HTTP request into the format that Apollo expects.
-     */
-    responseTransformer?: ResponseTransformer;
   };
 
-  /** @rest(...) Directive Options */
+  /** @jsonapi(...) Directive Options */
   export interface DirectiveOptions {
     /**
      * What HTTP method to use.
@@ -210,7 +203,7 @@ export namespace JsonApiLink {
     endpoint?: string;
     /**
      * Function that constructs a request path out of the Environmental
-     *  state when processing this @rest(...) call.
+     *  state when processing this @jsonapi(...) call.
      *
      * - @optional if you provide: @see DirectiveOptions.path
      * - **note**: providing this function means it's your responsibility to call
@@ -221,7 +214,7 @@ export namespace JsonApiLink {
     pathBuilder?: (props: PathBuilderProps) => string;
     /**
      * Optional method that constructs a RequestBody out of the Environmental state
-     * when processing this @rest(...) call.
+     * when processing this @jsonapi(...) call.
      * @default function that extracts the bodyKey from the args.
      *
      * Warning: This is an Advanced API and we are looking for syntactic & ergonomics feedback.
@@ -319,7 +312,7 @@ const quickFindRestDirective = (field: FieldNode): DirectiveNode | null => {
  */
 function findRestDirectivesThenInsertNullsForOmittedFields(
   resultKey: string,
-  current: any[] | object, // currentSelectionSet starts at root, so wait until we're inside a Field tagged with an @rest directive to activate!
+  current: any[] | object, // currentSelectionSet starts at root, so wait until we're inside a Field tagged with an @jsonapi directive to activate!
   mainDefinition: OperationDefinitionNode | FragmentDefinitionNode,
   fragmentMap: FragmentMap,
   currentSelectionSet: SelectionSetNode,
@@ -396,7 +389,7 @@ function findRestDirectivesThenInsertNullsForOmittedFields(
  * @param currentSelectionSet Current selection set we're filtering by
  */
 function insertNullsForAnyOmittedFields(
-  current: any[] | object, // currentSelectionSet starts at root, so wait until we're inside a Field tagged with an @rest directive to activate!
+  current: any[] | object, // currentSelectionSet starts at root, so wait until we're inside a Field tagged with an @jsonapi directive to activate!
   mainDefinition: OperationDefinitionNode | FragmentDefinitionNode,
   fragmentMap: FragmentMap,
   currentSelectionSet: SelectionSetNode,
@@ -479,10 +472,7 @@ const getEndpointOptions = (
     return { uri: result };
   }
 
-  return {
-    responseTransformer: null,
-    ...result,
-  };
+  return result;
 };
 
 /** Internal Tool that Parses Paths for JsonApiLink -- This API should be considered experimental */
@@ -547,7 +537,7 @@ export class PathBuilder {
                 console.warn(
                   'Warning: JsonApiLink caught an error while unpacking',
                   key,
-                  "This tends to happen if you forgot to pass a parameter needed for creating an @rest(path, or if JsonApiLink was configured to deeply unpack a path parameter that wasn't provided. This message will only log once per detected instance. Trouble-shooting hint: check @rest(path: and the variables provided to this query.",
+                  "This tends to happen if you forgot to pass a parameter needed for creating an @jsonapi(path, or if JsonApiLink was configured to deeply unpack a path parameter that wasn't provided. This message will only log once per detected instance. Trouble-shooting hint: check @jsonapi(path: and the variables provided to this query.",
                 );
                 PathBuilder.warnTable[key] = true;
               }
@@ -809,7 +799,6 @@ interface RequestContext {
   fragmentDefinitions: FragmentDefinitionNode[];
   typePatcher: JsonApiLink.FunctionalTypePatcher;
   serializers: JsonApiLink.Serializers;
-  responseTransformer: JsonApiLink.ResponseTransformer;
 
   /** An array of the responses from each fetched URL */
   responses: Response[];
@@ -890,7 +879,6 @@ const resolver: Resolver = async (
     fieldNameNormalizer,
     fieldNameDenormalizer: linkLevelNameDenormalizer,
     serializers,
-    responseTransformer,
   } = context;
 
   const fragmentMap = createFragmentMap(fragmentDefinitions);
@@ -930,7 +918,7 @@ const resolver: Resolver = async (
     method,
     type,
     fieldNameDenormalizer: perRequestNameDenormalizer,
-  } = directives.rest as JsonApiLink.DirectiveOptions;
+  } = directives.jsonapi as JsonApiLink.DirectiveOptions;
   if (!method) {
     method = 'GET';
   }
@@ -1004,17 +992,11 @@ const resolver: Resolver = async (
     );
   }
 
-  const transformer = endpointOption.responseTransformer || responseTransformer;
-  if (transformer) {
-    // A responseTransformer might call something else than json() on the response.
-    try {
-      result = await transformer(result, type);
-    } catch (err) {
-      console.warn('An error occurred in a responseTransformer:');
-      throw err;
-    }
-  } else if (result && result.json) {
-    result = await result.json();
+  try {
+    result = await jsonApiTransformer(result);
+  } catch (err) {
+    console.warn('An error occurred in jsonApiTransformer:');
+    throw err;
   }
 
   if (fieldNameNormalizer !== null) {
@@ -1034,12 +1016,12 @@ const resolver: Resolver = async (
 };
 
 /**
- * Default key to use when the @rest directive omits the "endpoint" parameter.
+ * Default key to use when the @jsonapi directive omits the "endpoint" parameter.
  */
 const DEFAULT_ENDPOINT_KEY = '';
 
 /**
- * Default key to use when the @rest directive omits the "bodySerializers" parameter.
+ * Default key to use when the @jsonapi directive omits the "bodySerializers" parameter.
  */
 const DEFAULT_SERIALIZER_KEY = '';
 
@@ -1068,7 +1050,6 @@ export class JsonApiLink extends ApolloLink {
   private readonly credentials: RequestCredentials;
   private readonly customFetch: JsonApiLink.CustomFetch;
   private readonly serializers: JsonApiLink.Serializers;
-  private readonly responseTransformer: JsonApiLink.ResponseTransformer;
 
   constructor({
     uri,
@@ -1081,7 +1062,6 @@ export class JsonApiLink extends ApolloLink {
     credentials,
     bodySerializers,
     defaultSerializer,
-    responseTransformer,
   }: JsonApiLink.Options) {
     super();
     const fallback = {};
@@ -1105,7 +1085,7 @@ export class JsonApiLink extends ApolloLink {
 
     if (this.endpoints[DEFAULT_ENDPOINT_KEY] == null) {
       console.warn(
-        'JsonApiLink configured without a default URI. All @rest(…) directives must provide an endpoint key!',
+        'JsonApiLink configured without a default URI. All @jsonapi(…) directives must provide an endpoint key!',
       );
     }
 
@@ -1156,7 +1136,6 @@ export class JsonApiLink extends ApolloLink {
       );
     }
 
-    this.responseTransformer = responseTransformer || null;
     this.fieldNameNormalizer = fieldNameNormalizer || null;
     this.fieldNameDenormalizer = fieldNameDenormalizer || null;
     this.headers = normalizeHeaders(headers);
@@ -1230,7 +1209,6 @@ export class JsonApiLink extends ApolloLink {
       typePatcher: this.typePatcher,
       serializers: this.serializers,
       responses: [],
-      responseTransformer: this.responseTransformer,
     };
     const resolverOptions = {};
     let obs;
