@@ -425,18 +425,21 @@ describe('Query single call', () => {
     expect(data.post.title).toBe(post.attributes.title);
   });
 
-  it.skip('can pass param with `0` value to a query with a variable', async () => {
+  it('can pass param with `0` value to a query with a variable', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
 
-    const post = { id: '1', title: 'Love apollo' };
-    fetchMock.get('/api/feed?offset=0', post);
+    const post = {
+      id: '1',
+      type: 'posts',
+      attributes: { title: 'Love apollo' },
+    };
+    fetchMock.get('/api/feed?offset=0', { data: [post] });
 
     const feedQuery = gql`
       query feed {
-        post(offset: $offset)
-          @jsonapi(type: "Post", path: "/feed?offset=:offset") {
+        posts(offset: $offset) @jsonapi(path: "/feed?offset={args.offset}") {
           id
           title
         }
@@ -451,7 +454,7 @@ describe('Query single call', () => {
       }),
     );
 
-    expect(data.post.title).toBe(post.title);
+    expect(data.posts[0].title).toBe(post.attributes.title);
   });
 
   it.skip('can pass param with `false` value to a query with a variable', async () => {
