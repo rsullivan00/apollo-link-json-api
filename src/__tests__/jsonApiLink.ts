@@ -359,71 +359,20 @@ describe('Query single call', () => {
     });
   });
 
-  it.skip('can handle array result', async () => {
-    expect.assertions(1);
-
-    const link = new JsonApiLink({ uri: '/api' });
-
-    const tags = [
-      { id: '1', type: 'tags', attributes: { name: 'apollo' } },
-      { id: '2', type: 'tags', attributes: { name: 'graphql' } },
-    ];
-    fetchMock.get('/api/tags', { data: tags });
-
-    // Verify multidimensional array support: https://github.com/apollographql/apollo-client/issues/776
-    const keywordGroups = [
-      [{ name: 'group1.element1' }, { name: 'group1.element2' }],
-      [
-        { name: 'group2.element1' },
-        { name: 'group2.element2' },
-        { name: 'group2.element3' },
-      ],
-    ];
-    fetchMock.get('/api/keywordGroups', keywordGroups);
-
-    const tagsQuery = gql`
-      query tags {
-        tags @jsonapi(type: "[Tag]", path: "/tags") {
-          name
-        }
-        keywordGroups
-          @jsonapi(type: "[ [ Keyword ] ]", path: "/keywordGroups") {
-          name
-        }
-      }
-    `;
-
-    const { data } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'tags',
-        query: tagsQuery,
-      }),
-    );
-
-    const tagsWithTypeName = tags.map(tag => ({
-      ...tag,
-      __typename: 'Tag',
-    }));
-    const keywordGroupsWithTypeName = keywordGroups.map(kg =>
-      kg.map(element => ({ ...element, __typename: 'Keyword' })),
-    );
-    expect(data).toMatchObject({
-      tags: tagsWithTypeName,
-      keywordGroups: keywordGroupsWithTypeName,
-    });
-  });
-
-  it.skip('can filter the query result', async () => {
+  it('filters the query result', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
 
     const post = {
       id: '1',
-      title: 'Love apollo',
-      content: 'Best graphql client ever.',
+      type: 'posts',
+      attributes: {
+        title: 'Love apollo',
+        content: 'Best graphql client ever.',
+      },
     };
-    fetchMock.get('/api/post/1', post);
+    fetchMock.get('/api/post/1', { data: post });
 
     const postTitleQuery = gql`
       query postTitle {
@@ -436,7 +385,7 @@ describe('Query single call', () => {
 
     const { data } = await makePromise<Result>(
       execute(link, {
-        operationName: 'postWithContent',
+        operationName: 'postTitle',
         query: postTitleQuery,
       }),
     );
