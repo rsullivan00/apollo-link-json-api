@@ -789,24 +789,31 @@ describe('Query multiple calls', () => {
     fetchMock.restore();
   });
 
-  it.skip('can run a query with multiple rest calls', async () => {
+  it('can run a query with multiple rest calls', async () => {
     expect.assertions(2);
 
     const link = new JsonApiLink({ uri: '/api' });
 
-    const post = { id: '1', title: 'Love apollo' };
+    const post = {
+      data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+    };
     fetchMock.get('/api/post/1', post);
 
-    const tags = [{ name: 'apollo' }, { name: 'graphql' }];
+    const tags = {
+      data: [
+        { type: 'tags', id: '1', attributes: { name: 'apollo' } },
+        { type: 'tags', id: '2', attributes: { name: 'graphql' } },
+      ],
+    };
     fetchMock.get('/api/tags', tags);
 
     const postAndTags = gql`
       query postAndTags {
-        post @jsonapi(type: "Post", path: "/post/1") {
+        post @jsonapi(path: "/post/1") {
           id
           title
         }
-        tags @jsonapi(type: "[Tag]", path: "/tags") {
+        tags @jsonapi(path: "/tags") {
           name
         }
       }
@@ -823,24 +830,30 @@ describe('Query multiple calls', () => {
     expect(data.tags).toBeDefined();
   });
 
-  it.skip('can run a subquery with multiple rest calls', async () => {
+  it('can run a subquery with multiple jsonapi calls', async () => {
     expect.assertions(2);
-    ``;
 
     const link = new JsonApiLink({ uri: '/api' });
 
-    const post = { id: '1', title: 'Love apollo' };
+    const post = {
+      data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+    };
     fetchMock.get('/api/post/1', post);
 
-    const tags = [{ name: 'apollo' }, { name: 'graphql' }];
+    const tags = {
+      data: [
+        { type: 'tags', id: '1', attributes: { name: 'apollo' } },
+        { type: 'tags', id: '2', attributes: { name: 'graphql' } },
+      ],
+    };
     fetchMock.get('/api/tags', tags);
 
     const postAndTags = gql`
       query postAndTags {
-        post @jsonapi(type: "Post", path: "/post/1") {
+        post @jsonapi(path: "/post/1") {
           id
           title
-          tags @jsonapi(type: "[Tag]", path: "/tags") {
+          tags @jsonapi(path: "/tags") {
             name
           }
         }
@@ -858,7 +871,7 @@ describe('Query multiple calls', () => {
     expect(data.post.tags).toBeDefined();
   });
 
-  it.skip('can return a partial result if one out of multiple rest calls fail', async () => {
+  it('can return a partial result if one out of multiple jsonapi calls fail', async () => {
     expect.assertions(2);
 
     const link = new JsonApiLink({ uri: '/api' });
@@ -868,16 +881,21 @@ describe('Query multiple calls', () => {
       body: { status: 'error', message: 'Not found' },
     });
 
-    const tags = [{ name: 'apollo' }, { name: 'graphql' }];
+    const tags = {
+      data: [
+        { type: 'tags', id: '1', attributes: { name: 'apollo' } },
+        { type: 'tags', id: '2', attributes: { name: 'graphql' } },
+      ],
+    };
     fetchMock.get('/api/tags', tags);
 
     const postAndTags = gql`
       query postAndTags {
-        post @jsonapi(type: "Post", path: "/post/1") {
+        post @jsonapi(path: "/post/1") {
           id
           title
         }
-        tags @jsonapi(type: "[Tag]", path: "/tags") {
+        tags @jsonapi(path: "/tags") {
           name
         }
       }
