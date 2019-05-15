@@ -82,8 +82,7 @@ describe('Configuration', async () => {
 
       const link = new JsonApiLink({ uri: '/api' });
       const post = {
-        data: { type: 'posts', id: '1' },
-        attributes: { title: 'Love apollo' },
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
       };
       fetchMock.get('/api/post/1', post);
 
@@ -129,7 +128,7 @@ describe('Configuration', async () => {
     afterEach(() => {
       fetchMock.restore();
     });
-    it.skip('should apply fieldNameNormalizer if specified', async () => {
+    it('should apply fieldNameNormalizer if specified', async () => {
       expect.assertions(3);
       const link = new JsonApiLink({
         uri: '/api',
@@ -137,13 +136,25 @@ describe('Configuration', async () => {
       });
       // "Server" returns TitleCased and snake_cased fields
       // fieldNameNormalizer changes them to camelCase
-      const post = { id: '1', Title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { Title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
-      const tags = [
-        { Name: 'apollo', tag_description: 'once' },
-        { Name: 'graphql', tag_description: 'twice' },
-      ];
+      const tags = {
+        data: [
+          {
+            type: 'tags',
+            id: '1',
+            attributes: { Name: 'apollo', tag_description: 'once' },
+          },
+          {
+            type: 'tags',
+            id: '2',
+            attributes: { Name: 'graphql', tag_description: 'twice' },
+          },
+        ],
+      };
       fetchMock.get('/api/tags', tags);
 
       const postAndTags = gql`
@@ -171,16 +182,23 @@ describe('Configuration', async () => {
       expect(data.post.tags[0].tagDescription).toEqual('once');
     });
 
-    it.skip('should preserve __typename when using fieldNameNormalizer', async () => {
+    it('should preserve __typename when using fieldNameNormalizer', async () => {
       expect.assertions(2);
       const link = new JsonApiLink({
         uri: '/api',
         fieldNameNormalizer: camelCase,
       });
-      const post = { id: '1', Title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { Title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
-      const tags = [{ Name: 'apollo' }, { Name: 'graphql' }];
+      const tags = {
+        data: [
+          { type: 'tags', id: '1', attributes: { Name: 'apollo' } },
+          { type: 'tags', id: '2', attributes: { Name: 'graphql' } },
+        ],
+      };
       fetchMock.get('/api/tags', tags);
 
       const postAndTags = gql`
@@ -204,7 +222,7 @@ describe('Configuration', async () => {
       );
 
       expect(data.post.__typename).toBeDefined();
-      expect(data.post.__typename).toEqual('Post');
+      expect(data.post.__typename).toEqual('Posts');
     });
   });
 
