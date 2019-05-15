@@ -509,7 +509,7 @@ describe('Query single call', () => {
     });
   });
 
-  it.skip('returns an empty object on 204 status', async () => {
+  it('returns an empty object on 204 status', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
@@ -517,13 +517,13 @@ describe('Query single call', () => {
     fetchMock.get('/api/no-content', {
       headers: { 'Content-Length': 0 },
       status: 204,
-      body: { hasNoContent: true },
+      body: { content: true },
     });
 
     const queryWithNoContent = gql`
       query noContent {
-        noContentResponse @jsonapi(type: "NoContent", path: "/no-content") {
-          hasNoContent
+        noContentResponse @jsonapi(path: "/no-content") {
+          content
         }
       }
     `;
@@ -536,10 +536,7 @@ describe('Query single call', () => {
     );
 
     expect(data).toMatchObject({
-      noContentResponse: {
-        __typename: 'NoContent',
-        hasNoContent: null,
-      },
+      noContentResponse: {},
     });
   });
 

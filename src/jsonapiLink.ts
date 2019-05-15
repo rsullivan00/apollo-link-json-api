@@ -967,7 +967,12 @@ const resolver: Resolver = async (
       // success, but doesn't return your Resource.
       result = {};
     } else {
-      result = response;
+      try {
+        result = await jsonApiTransformer(response);
+      } catch (err) {
+        console.warn('An error occurred in jsonApiTransformer:');
+        throw err;
+      }
     }
   } else if (response.status === 404) {
     // In a GraphQL context a missing resource should be indicated by
@@ -990,13 +995,6 @@ const resolver: Resolver = async (
       parsed,
       `Response not successful: Received status code ${response.status}`,
     );
-  }
-
-  try {
-    result = await jsonApiTransformer(result);
-  } catch (err) {
-    console.warn('An error occurred in jsonApiTransformer:');
-    throw err;
   }
 
   if (fieldNameNormalizer !== null) {
