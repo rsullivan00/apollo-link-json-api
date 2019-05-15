@@ -457,140 +457,37 @@ describe('Query single call', () => {
     expect(data.posts[0].title).toBe(post.attributes.title);
   });
 
-  it.skip('can pass param with `false` value to a query with a variable', async () => {
+  it('can query through relationships', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
-
-    const post = { id: '1', title: 'Love apollo' };
-    fetchMock.get('/api/feed?published=false', post);
-
-    const feedQuery = gql`
-      query feed {
-        post(published: $published)
-          @jsonapi(type: "Post", path: "/feed?published=:published") {
-          id
-          title
-        }
-      }
-    `;
-
-    const { data } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'feed',
-        query: feedQuery,
-        variables: { published: false },
-      }),
-    );
-
-    expect(data.post.title).toBe(post.title);
-  });
-
-  it.skip('can pass param with `null` value to a query with a variable', async () => {
-    expect.assertions(1);
-
-    const link = new JsonApiLink({ uri: '/api' });
-
-    const person = { name: 'John' };
-    fetchMock.get('/api/people?address=null', person);
-
-    const peopleWithoutAddressQuery = gql`
-      query feed {
-        people(address: $address)
-          @jsonapi(type: "Person", path: "/people?address=:address") {
-          name
-        }
-      }
-    `;
-
-    const { data } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'feed',
-        query: peopleWithoutAddressQuery,
-        variables: { address: null },
-      }),
-    );
-
-    expect(data.people.name).toBe(person.name);
-  });
-
-  it.skip('can hit two endpoints!', async () => {
-    expect.assertions(2);
-
-    const link = new JsonApiLink({ endpoints: { v1: '/v1', v2: '/v2' } });
-
-    const postV1 = { id: '1', title: '1. Love apollo' };
-    const postV2 = { id: '1', titleText: '2. Love apollo' };
-    fetchMock.get('/v1/post/1', postV1);
-    fetchMock.get('/v2/post/1', postV2);
-
-    const postTitleQuery1 = gql`
-      query postTitle($id: ID!) {
-        post(id: $id)
-          @jsonapi(type: "Post", path: "/post/:id", endpoint: "v1") {
-          id
-          title
-        }
-      }
-    `;
-    const postTitleQuery2 = gql`
-      query postTitle($id: ID!) {
-        post(id: $id)
-          @jsonapi(type: "Post", path: "/post/:id", endpoint: "v2") {
-          id
-          titleText
-        }
-      }
-    `;
-
-    const { data: data1 } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'postTitle1',
-        query: postTitleQuery1,
-        variables: { id: '1' },
-      }),
-    );
-    const { data: data2 } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'postTitle2',
-        query: postTitleQuery2,
-        variables: { id: '1' },
-      }),
-    );
-
-    expect(data1.post.title).toBe(postV1.title);
-    expect(data2.post.titleText).toBe(postV2.titleText);
-  });
-
-  it.skip('can make a doubly nested query!', async () => {
-    expect.assertions(1);
-
-    const link = new JsonApiLink({ uri: '/api' });
-    const post = {
+    const author = {
       id: '1',
-      title: 'Love apollo',
-      nested: { data: 'test', secondNestKey: 'proof' },
+      type: 'authors',
+      attributes: { name: 'George R. R. Martin' },
     };
-    const postWithNest = { ...post };
-    (postWithNest.nested as any).test = {
-      __typename: 'Inner',
-      positive: 'winning',
+    const bookWithRelated = {
+      id: '2',
+      type: 'books',
+      attributes: { title: 'A Game of Thrones' },
+      relationships: {
+        author: { data: { id: author.id, type: author.type } },
+      },
     };
 
-    fetchMock.get('/api/post/1', post);
-    fetchMock.get('/api/post/proof', { positive: 'winning' });
+    fetchMock.get('/api/books/2?include=author', {
+      data: bookWithRelated,
+      included: [author],
+    });
 
-    const postTitleQuery = gql`
-      query postTitle {
-        post @jsonapi(type: "Post", path: "/post/1") {
+    const bookWithAuthorQuery = gql`
+      query bookWithAuthor {
+        book @jsonapi(path: "/books/2?include=author") {
           id
           title
-          nested {
-            data
-            secondNestKey @export(as: innerNest)
-            test @jsonapi(type: "Inner", path: "/post/:innerNest") {
-              positive
-            }
+          author {
+            id
+            name
           }
         }
       }
@@ -598,13 +495,17 @@ describe('Query single call', () => {
 
     const { data } = await makePromise<Result>(
       execute(link, {
-        operationName: 'postTitle',
-        query: postTitleQuery,
+        operationName: 'bookWithAuthor',
+        query: bookWithAuthorQuery,
       }),
     );
 
     expect(data).toMatchObject({
-      post: { ...postWithNest, __typename: 'Post' },
+      book: {
+        id: bookWithRelated.id,
+        title: bookWithRelated.attributes.title,
+        author: { id: author.id, name: author.attributes.name },
+      },
     });
   });
 
