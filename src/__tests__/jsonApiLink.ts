@@ -107,40 +107,6 @@ describe('Configuration', async () => {
       }
     });
 
-    it.skip('throws when invalid typePatchers', async () => {
-      expect.assertions(4);
-      // If using typescript, the typescript compiler protects us against allowing this.
-      // but if people use javascript or force it, we want exceptions to be thrown.
-      const pretendItsJavascript = (arg: any): any => arg;
-
-      expect(() => {
-        new JsonApiLink({
-          uri: '/correct',
-          typePatcher: pretendItsJavascript(-1),
-        });
-      }).toThrow();
-      expect(() => {
-        new JsonApiLink({
-          uri: '/correct',
-          typePatcher: pretendItsJavascript('fail'),
-        });
-      }).toThrow();
-      expect(() => {
-        new JsonApiLink({
-          uri: '/correct',
-          typePatcher: pretendItsJavascript([]),
-        });
-      }).toThrow();
-      expect(() => {
-        new JsonApiLink({
-          uri: '/correct',
-          typePatcher: pretendItsJavascript({
-            key: 'my values are not functions',
-          }),
-        });
-      }).toThrow();
-    });
-
     it.skip("Doesn't throw on good configs", () => {
       expect.assertions(1);
 
@@ -359,39 +325,50 @@ describe('Query single call', () => {
     });
   });
 
-  it.skip('can get query params regardless of the order', async () => {
+  it('can handle array result', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
-    const post = { id: '1', title: 'Love apollo' };
-    fetchMock.get('/api/post/1', post);
 
-    const postTitleQuery = gql`
-      query postTitle {
-        post @jsonapi(type: "Post") {
-          id
-          title
+    const tags = [
+      { id: '1', type: 'tags', attributes: { name: 'apollo' } },
+      { id: '2', type: 'tags', attributes: { name: 'graphql' } },
+    ];
+    fetchMock.get('/api/tags', { data: tags });
+
+    const tagsQuery = gql`
+      query allTags {
+        tags @jsonapi(path: "/tags") {
+          name
         }
       }
     `;
 
     const { data } = await makePromise<Result>(
       execute(link, {
-        operationName: 'postTitle',
-        query: postTitleQuery,
+        operationName: 'allTags',
+        query: tagsQuery,
       }),
     );
 
-    expect(data).toMatchObject({ post });
+    expect(data).toMatchObject({
+      tags: [
+        { name: 'apollo', __typename: 'Tags' },
+        { name: 'graphql', __typename: 'Tags' },
+      ],
+    });
   });
 
-  it.skip('can return array result with typename', async () => {
+  it.skip('can handle array result', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
 
-    const tags = [{ name: 'apollo' }, { name: 'graphql' }];
-    fetchMock.get('/api/tags', tags);
+    const tags = [
+      { id: '1', type: 'tags', attributes: { name: 'apollo' } },
+      { id: '2', type: 'tags', attributes: { name: 'graphql' } },
+    ];
+    fetchMock.get('/api/tags', { data: tags });
 
     // Verify multidimensional array support: https://github.com/apollographql/apollo-client/issues/776
     const keywordGroups = [
