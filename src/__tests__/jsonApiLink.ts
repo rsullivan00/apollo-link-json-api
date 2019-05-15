@@ -918,25 +918,31 @@ describe('GraphQL aliases should work', async () => {
     fetchMock.restore();
   });
 
-  it.skip('outer-level aliases are supported', async () => {
+  it('outer-level aliases are supported', async () => {
     expect.assertions(2);
 
     const link = new JsonApiLink({ endpoints: { v1: '/v1', v2: '/v2' } });
 
-    const postV1 = { id: '1', title: '1. Love apollo' };
-    const postV2 = { id: '1', titleText: '2. Love apollo' };
+    const postV1 = {
+      data: { type: 'posts', id: '1', attributes: { title: '1. Love apollo' } },
+    };
+    const postV2 = {
+      data: {
+        type: 'posts',
+        id: '1',
+        attributes: { titleText: '2. Love apollo' },
+      },
+    };
     fetchMock.get('/v1/post/1', postV1);
     fetchMock.get('/v2/post/1', postV2);
 
     const postTitleQueries = gql`
       query postTitle($id: ID!) {
-        v1: post(id: $id)
-          @jsonapi(type: "Post", path: "/post/:id", endpoint: "v1") {
+        v1: post(id: $id) @jsonapi(path: "/post/{args.id}", endpoint: "v1") {
           id
           title
         }
-        v2: post(id: $id)
-          @jsonapi(type: "Post", path: "/post/:id", endpoint: "v2") {
+        v2: post(id: $id) @jsonapi(path: "/post/{args.id}", endpoint: "v2") {
           id
           titleText
         }
@@ -951,21 +957,27 @@ describe('GraphQL aliases should work', async () => {
       }),
     );
 
-    expect(data.v1.title).toBe(postV1.title);
-    expect(data.v2.titleText).toBe(postV2.titleText);
+    expect(data.v1.title).toBe(postV1.data.attributes.title);
+    expect(data.v2.titleText).toBe(postV2.data.attributes.titleText);
   });
 
-  it.skip('nested aliases are supported', async () => {
+  it('nested aliases are supported', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/v1' });
 
-    const postV1 = { id: '1', titleText: '1. Love apollo' };
+    const postV1 = {
+      data: {
+        type: 'posts',
+        id: '1',
+        attributes: { titleText: '1. Love apollo' },
+      },
+    };
     fetchMock.get('/v1/post/1', postV1);
 
     const postTitleQueries = gql`
       query postTitle($id: ID!) {
-        post(id: $id) @jsonapi(type: "Post", path: "/post/:id") {
+        post(id: $id) @jsonapi(path: "/post/{args.id}") {
           id
           title: titleText
         }
@@ -980,7 +992,7 @@ describe('GraphQL aliases should work', async () => {
       }),
     );
 
-    expect(data.post.title).toBe(postV1.titleText);
+    expect(data.post.title).toBe(postV1.data.attributes.titleText);
   });
 });
 
