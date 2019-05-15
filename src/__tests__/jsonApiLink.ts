@@ -230,7 +230,7 @@ describe('Configuration', async () => {
     afterEach(() => {
       fetchMock.restore();
     });
-    it.skip('should apply customFetch if specified', async () => {
+    it('should apply customFetch if specified', async () => {
       expect.assertions(1);
 
       const link = new JsonApiLink({
@@ -238,9 +238,11 @@ describe('Configuration', async () => {
         customFetch: (uri, options) =>
           new Promise((resolve, reject) => {
             const body = JSON.stringify({
-              type: 'posts',
-              id: '1',
-              attributes: { title: 'custom' },
+              data: {
+                type: 'posts',
+                id: '1',
+                attributes: { title: 'custom' },
+              },
             });
             resolve(new Response(body));
           }),
