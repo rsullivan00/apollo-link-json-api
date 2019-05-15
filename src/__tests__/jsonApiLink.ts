@@ -14,7 +14,7 @@ import {
   JsonApiLink,
   validateRequestMethodForOperationType,
   normalizeHeaders,
-} from '../restLink';
+} from '../jsonApiLink';
 import { HttpLink } from 'apollo-link-http';
 import { withClientState } from 'apollo-link-state';
 
@@ -42,7 +42,7 @@ const orderDupPreservingFlattenedHeaders: (
 
 const sampleQuery = gql`
   query post {
-    post(id: "1") @rest(type: "Post", path: "/post/:id") {
+    post(id: "1") @jsonapi(path: "/post/:id") {
       id
     }
   }
@@ -86,7 +86,7 @@ describe('Configuration', async () => {
 
       const postTitleQuery = gql`
         query postTitle {
-          post @rest(type: "Post") {
+          post @jsonapi() {
             id
             title
           }
@@ -102,7 +102,7 @@ describe('Configuration', async () => {
         );
       } catch (error) {
         expect(error.message).toBe(
-          'One of ("path" | "pathBuilder") must be set in the @rest() directive. This request had neither, please add one',
+          'One of ("path" | "pathBuilder") must be set in the @jsonapi() directive. This request had neither, please add one',
         );
       }
     });
@@ -179,10 +179,10 @@ describe('Configuration', async () => {
 
       const postAndTags = gql`
         query postAndTags {
-          post @rest(type: "Post", path: "/post/1") {
+          post @jsonapi(path: "/post/1") {
             id
             title
-            tags @rest(type: "[Tag]", path: "/tags") {
+            tags @jsonapi(path: "/tags") {
               name
               tagDescription
             }
@@ -215,11 +215,11 @@ describe('Configuration', async () => {
 
       const postAndTags = gql`
         query postAndTags {
-          post @rest(type: "Post", path: "/post/1") {
+          post @jsonapi(path: "/post/1") {
             __typename
             id
             title
-            tags @rest(type: "[Tag]", path: "/tags") {
+            tags @jsonapi(path: "/tags") {
               name
             }
           }
@@ -256,7 +256,7 @@ describe('Configuration', async () => {
 
       const postTitle = gql`
         query postTitle {
-          post @rest(type: "Post", path: "/post/1") {
+          post @jsonapi(type: "Post", path: "/post/1") {
             title
           }
         }
@@ -287,7 +287,7 @@ describe('Configuration', async () => {
       });
 
       expect(warning).toBe(
-        'JsonApiLink configured without a default URI. All @rest(…) directives must provide an endpoint key!',
+        'JsonApiLink configured without a default URI. All @jsonapi(…) directives must provide an endpoint key!',
       );
     });
 
@@ -452,7 +452,7 @@ describe('Complex responses need nested __typename insertions', () => {
 
     const someQuery = gql`
       query someQuery {
-        outer @rest(type: "Outer", path: "/outer/1") {
+        outer @jsonapi(path: "/outer/1") {
           id
           inner1 {
             data
@@ -491,486 +491,6 @@ describe('Complex responses need nested __typename insertions', () => {
 
     expect(data).toMatchObject({
       outer: rootTyped,
-    });
-  });
-
-  it('can configure typename by using @type annotations', async () => {
-    expect.assertions(1);
-
-    const link = new JsonApiLink({ uri: '/api' });
-    const root = {
-      id: '1',
-      inner1: { data: 'outer.inner1', reused: { id: 1 } },
-      simpleDoubleNesting: {
-        data: 'dd',
-        inner1: { data: 'outer.SDN.inner1', reused: { id: 2 } },
-      },
-      nestedArrays: {
-        unrelatedArray: ['string', 10],
-        singlyArray: [{ data: 'entry!' }],
-        doublyNestedArray: [[{ data: 'inception.entry!' }]],
-      },
-    };
-    const rootTyped = {
-      __typename: 'Outer',
-      id: '1',
-      inner1: {
-        __typename: 'Inner1',
-        data: 'outer.inner1',
-        reused: { __typename: 'Reused', id: 1 },
-      },
-      simpleDoubleNesting: {
-        __typename: 'SimpleDoubleNesting',
-        data: 'dd',
-        inner1: {
-          __typename: 'Inner1',
-          data: 'outer.SDN.inner1',
-          reused: { __typename: 'Reused', id: 2 },
-        },
-      },
-      nestedArrays: {
-        __typename: 'NestedArrays',
-        unrelatedArray: ['string', 10],
-        singlyArray: [{ __typename: 'SinglyNestedArrayEntry', data: 'entry!' }],
-        doublyNestedArray: [
-          [
-            {
-              __typename: 'DoublyNestedArrayEntry',
-              data: 'inception.entry!',
-            },
-          ],
-        ],
-      },
-    };
-
-    fetchMock.get('/api/outer/2', root);
-
-    const someQuery = gql`
-      query someQuery {
-        outer @rest(type: "Outer", path: "/outer/2") {
-          id
-          inner1 @type(name: "Inner1") {
-            data
-            reused @type(name: "Reused") {
-              id
-            }
-          }
-          simpleDoubleNesting @type(name: "SimpleDoubleNesting") {
-            data
-            inner1 @type(name: "Inner1") {
-              data
-              reused @type(name: "Reused") {
-                id
-              }
-            }
-          }
-          nestedArrays @type(name: "NestedArrays") {
-            unrelatedArray
-            singlyArray @type(name: "SinglyNestedArrayEntry") {
-              data
-            }
-            doublyNestedArray @type(name: "DoublyNestedArrayEntry") {
-              data
-            }
-          }
-        }
-      }
-    `;
-
-    const { data } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'someOperation',
-        query: someQuery,
-      }),
-    );
-
-    expect(data).toMatchObject({
-      outer: rootTyped,
-    });
-  });
-
-  it.skip('can configure typename by providing *both* a custom type-patcher table *and* nested @type annotations -- see Issue 112 https://github.com/apollographql/apollo-link-rest/issues/112', async () => {
-    expect.assertions(1);
-
-    const patchIfExists = (
-      data: any,
-      key: string,
-      __typename: string,
-      patcher: JsonApiLink.FunctionalTypePatcher,
-    ) => {
-      const value = data[key];
-      if (value == null) {
-        return {};
-      }
-      const result = { [key]: patcher(value, __typename, patcher) };
-      return result;
-    };
-    const typePatcher: JsonApiLink.TypePatcherTable = {
-      Outer: (
-        obj: any,
-        outerType: string,
-        patchDeeper: JsonApiLink.FunctionalTypePatcher,
-      ) => {
-        if (obj == null) {
-          return obj;
-        }
-
-        return {
-          ...obj,
-          ...patchIfExists(obj, 'inner1', 'Inner1', patchDeeper),
-          ...patchIfExists(
-            obj,
-            'simpleDoubleNesting',
-            'SimpleDoubleNesting',
-            patchDeeper,
-          ),
-          ...patchIfExists(obj, 'nestedArrays', 'NestedArrays', patchDeeper),
-        };
-      },
-      Inner1: (
-        obj: any,
-        outerType: string,
-        patchDeeper: JsonApiLink.FunctionalTypePatcher,
-      ) => {
-        if (obj == null) {
-          return obj;
-        }
-        return {
-          ...obj,
-          ...patchIfExists(obj, 'reused', 'Reused', patchDeeper),
-        };
-      },
-      SimpleDoubleNesting: (
-        obj: any,
-        outerType: string,
-        patchDeeper: JsonApiLink.FunctionalTypePatcher,
-      ) => {
-        if (obj == null) {
-          return obj;
-        }
-
-        return {
-          ...obj,
-          ...patchIfExists(obj, 'inner1', 'Inner1', patchDeeper),
-        };
-      },
-      NestedArrays: (
-        obj: any,
-        outerType: string,
-        patchDeeper: JsonApiLink.FunctionalTypePatcher,
-      ) => {
-        if (obj == null) {
-          return obj;
-        }
-
-        return {
-          ...obj,
-          ...patchIfExists(
-            obj,
-            'singlyArray',
-            'SinglyNestedArrayEntry',
-            patchDeeper,
-          ),
-          ...patchIfExists(
-            obj,
-            'doublyNestedArray',
-            'DoublyNestedArrayEntry',
-            patchDeeper,
-          ),
-        };
-      },
-      InnerAnnotated: (
-        obj: any,
-        outerType: string,
-        patchDeeper: JsonApiLink.FunctionalTypePatcher,
-      ) => {
-        if (obj == null) {
-          return obj;
-        }
-        return {
-          ...obj,
-          ...patchIfExists(obj, 'reused', 'Reused', patchDeeper),
-        };
-      },
-    };
-
-    const link = new JsonApiLink({ uri: '/api', typePatcher });
-    const root = {
-      id: '1',
-      inner1: { data: 'outer.inner1', reused: { id: 1 } },
-      simpleDoubleNesting: {
-        data: 'dd',
-        inner1: { data: 'outer.SDN.inner1', reused: { id: 2 } },
-      },
-      simpleDoubleNestingAnnotated: {
-        data: 'dd',
-        innerAnnotated: { data: 'inner', reused: { id: 3 } },
-      },
-      nestedArrays: {
-        unrelatedArray: ['string', 10],
-        singlyArray: [{ data: 'entry!' }],
-        doublyNestedArray: [[{ data: 'inception.entry!' }]],
-      },
-    };
-    const rootTyped = {
-      __typename: 'Outer',
-      id: '1',
-      inner1: {
-        __typename: 'Inner1',
-        data: 'outer.inner1',
-        reused: { __typename: 'Reused', id: 1 },
-      },
-      simpleDoubleNesting: {
-        __typename: 'SimpleDoubleNesting',
-        data: 'dd',
-        inner1: {
-          __typename: 'Inner1',
-          data: 'outer.SDN.inner1',
-          reused: { __typename: 'Reused', id: 2 },
-        },
-      },
-      simpleDoubleNestingAnnotated: {
-        __typename: 'SimpleDoubleNestingAnnotated',
-        data: 'dd',
-        innerAnnotated: {
-          __typename: 'InnerAnnotated',
-          data: 'inner',
-          reused: {
-            __typename: 'Reused',
-            id: 3,
-          },
-        },
-      },
-      nestedArrays: {
-        __typename: 'NestedArrays',
-        unrelatedArray: ['string', 10],
-        singlyArray: [{ __typename: 'SinglyNestedArrayEntry', data: 'entry!' }],
-        doublyNestedArray: [
-          [
-            {
-              __typename: 'DoublyNestedArrayEntry',
-              data: 'inception.entry!',
-            },
-          ],
-        ],
-      },
-    };
-
-    fetchMock.get('/api/outer/3', root);
-
-    const someQuery = gql`
-      query someQuery {
-        outer @rest(type: "Outer", path: "/outer/3") {
-          id
-          inner1 {
-            data
-            reused {
-              id
-            }
-          }
-          simpleDoubleNesting {
-            data
-            inner1 {
-              data
-              reused {
-                id
-              }
-            }
-          }
-          simpleDoubleNestingAnnotated
-            @type(name: "SimpleDoubleNestingAnnotated") {
-            data
-            innerAnnotated @type(name: "InnerAnnotated") {
-              data
-              reused {
-                id
-              }
-            }
-          }
-          nestedArrays {
-            unrelatedArray
-            singlyArray {
-              data
-            }
-            doublyNestedArray {
-              data
-            }
-          }
-        }
-      }
-    `;
-
-    const { data } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'someOperation',
-        query: someQuery,
-      }),
-    );
-
-    expect(data).toMatchObject({
-      outer: rootTyped,
-    });
-  });
-});
-
-describe('Can customize/parse the response before passing to Apollo', () => {
-  afterEach(() => {
-    fetchMock.restore();
-  });
-
-  const posts = [
-    { title: 'Love apollo' },
-    { title: 'Respect apollo', meta: { creatorId: 1 } },
-  ];
-
-  describe('with root level `responseTransformer`', () => {
-    it('handles single record responses', async () => {
-      fetchMock.get('/api/posts/1', {
-        meta: {},
-        post: posts[1],
-      });
-
-      const link = new JsonApiLink({
-        uri: '/api',
-        responseTransformer: async (response, type) => {
-          expect(type).toBe('Post');
-          const data = await response.json();
-          return data.post;
-        },
-      });
-      const restQuery = gql`
-        query {
-          post @rest(type: "Post", path: "/posts/1") {
-            title
-            meta
-          }
-        }
-      `;
-      const { data: restData } = await makePromise<Result>(
-        execute(link, { operationName: 'restQuery', query: restQuery }),
-      );
-      expect(restData).toEqual({
-        post: {
-          title: 'Respect apollo',
-          meta: { creatorId: 1 },
-          __typename: 'Post',
-        },
-      });
-    });
-
-    it('handles multiple record responses', async () => {
-      fetchMock.get('/api/posts', {
-        meta: {},
-        posts,
-      });
-
-      const link = new JsonApiLink({
-        uri: '/api',
-        responseTransformer: async (response, type) => {
-          expect(type).toBe('[Post]');
-          const data = await response.json();
-          return data.posts;
-        },
-      });
-      const restQuery = gql`
-        query {
-          posts @rest(type: "[Post]", path: "/posts") {
-            title
-          }
-        }
-      `;
-      const { data: restData } = await makePromise<Result>(
-        execute(link, { operationName: 'restQuery', query: restQuery }),
-      );
-      expect(restData).toEqual({
-        posts: [
-          { title: 'Love apollo', __typename: 'Post' },
-          { title: 'Respect apollo', __typename: 'Post' },
-        ],
-      });
-    });
-  });
-
-  describe('with endpoint level `responseTransformer`', () => {
-    it('handles single record responses', async done => {
-      fetchMock.get('/api/v1/posts/1', {
-        meta: {},
-        post: posts[1],
-      });
-
-      const link = new JsonApiLink({
-        // This is purpsefully wrong so that we verify the endpoint one is called
-        responseTransformer: () =>
-          done.fail('Should have called endpoint.responseTransformer'),
-        endpoints: {
-          v1: {
-            uri: '/api/v1',
-            responseTransformer: async (response, type) => {
-              expect(type).toBe('Post');
-              const data = await response.json();
-              return data.post;
-            },
-          },
-        },
-      });
-      const restQuery = gql`
-        query {
-          post @rest(type: "Post", path: "/posts/1", endpoint: "v1") {
-            title
-            meta
-          }
-        }
-      `;
-      const { data: restData } = await makePromise<Result>(
-        execute(link, { operationName: 'restQuery', query: restQuery }),
-      );
-      expect(restData).toEqual({
-        post: {
-          title: 'Respect apollo',
-          meta: { creatorId: 1 },
-          __typename: 'Post',
-        },
-      });
-      done();
-    });
-
-    it('handles multiple record responses', async done => {
-      fetchMock.get('/api/v1/posts', {
-        meta: {},
-        posts,
-      });
-
-      const link = new JsonApiLink({
-        responseTransformer: () =>
-          done.fail('Should have called endpoint.responseTransformer'),
-        endpoints: {
-          v1: {
-            uri: '/api/v1',
-            responseTransformer: async (response, type) => {
-              expect(type).toBe('[Post]');
-              const data = await response.json();
-              return data.posts;
-            },
-          },
-        },
-      });
-      const restQuery = gql`
-        query {
-          posts @rest(type: "[Post]", path: "/posts", endpoint: "v1") {
-            title
-          }
-        }
-      `;
-      const { data: restData } = await makePromise<Result>(
-        execute(link, { operationName: 'restQuery', query: restQuery }),
-      );
-      expect(restData).toEqual({
-        posts: [
-          { title: 'Love apollo', __typename: 'Post' },
-          { title: 'Respect apollo', __typename: 'Post' },
-        ],
-      });
-      done();
     });
   });
 });
@@ -984,12 +504,16 @@ describe('Query single call', () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
-    const post = { id: '1', title: 'Love apollo' };
+    const post = {
+      id: '1',
+      type: 'posts',
+      attributes: { title: 'Love apollo' },
+    };
     fetchMock.get('/api/post/1', post);
 
     const postTitleQuery = gql`
       query postTitle {
-        post @rest(type: "Post", path: "/post/1") {
+        post @jsonapi(path: "/post/1") {
           id
           title
         }
@@ -1003,51 +527,7 @@ describe('Query single call', () => {
       }),
     );
 
-    expect(data).toMatchObject({ post: { ...post, __typename: 'Post' } });
-  });
-  it('can run a query that returns a scalar (simple types like string, number, boolean) response', async () => {
-    expect.assertions(1);
-
-    const link = new JsonApiLink({ uri: '/api' });
-    const stringResp = 'SecretString';
-    fetchMock.get('/api/config', JSON.stringify(stringResp));
-
-    const serverConfigQuery = gql`
-      query config {
-        config @rest(type: "String", path: "/config")
-      }
-    `;
-
-    const { data } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'serverConfig',
-        query: serverConfigQuery,
-      }),
-    );
-
-    expect(data).toMatchObject({ config: stringResp });
-  });
-
-  it('can run a query that returns an array of scalars', async () => {
-    expect.assertions(1);
-
-    const link = new JsonApiLink({ uri: '/api' });
-
-    const arrayResp = ['Id1', 'Id2'];
-    fetchMock.get('/api/admins', JSON.stringify(arrayResp));
-    const adminsQuery = gql`
-      query adminIds {
-        admins @rest(type: "[String!]!", path: "/admins")
-      }
-    `;
-    const { data } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'adminIds',
-        query: adminsQuery,
-      }),
-    );
-
-    expect(data).toMatchObject({ admins: arrayResp });
+    expect(data).toMatchObject({ post: { ...post, __typename: 'Posts' } });
   });
 
   it('can get query params regardless of the order', async () => {
@@ -1059,7 +539,7 @@ describe('Query single call', () => {
 
     const postTitleQuery = gql`
       query postTitle {
-        post @rest(path: "/post/1", type: "Post") {
+        post @jsonapi(type: "Post") {
           id
           title
         }
