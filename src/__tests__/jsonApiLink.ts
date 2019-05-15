@@ -2041,50 +2041,6 @@ describe('Mutation', () => {
       expect(requestCall[1].body).toEqual(JSON.stringify(post));
     });
 
-    it.skip('respects bodyKey for mutations', async () => {
-      expect.assertions(2);
-
-      const link = new JsonApiLink({ uri: '/api' });
-
-      // the id in this hash simulates the server *assigning* an id for the new post
-      const post = { id: '1', title: 'Love apollo' };
-      fetchMock.post('/api/posts/new', post);
-      const resultPost = { __typename: 'Post', ...post };
-
-      const createPostMutation = gql`
-        fragment PublishablePostInput on REST {
-          title: String
-        }
-
-        mutation publishPost(
-          $someApiWithACustomBodyKey: PublishablePostInput!
-        ) {
-          publishedPost(someApiWithACustomBodyKey: $someApiWithACustomBodyKey)
-            @jsonapi(
-              type: "Post"
-              path: "/posts/new"
-              method: "POST"
-              bodyKey: "someApiWithACustomBodyKey"
-            ) {
-            id
-            title
-          }
-        }
-      `;
-      const response = await makePromise<Result>(
-        execute(link, {
-          operationName: 'publishPost',
-          query: createPostMutation,
-          variables: { someApiWithACustomBodyKey: { title: post.title } },
-        }),
-      );
-      expect(response.data.publishedPost).toEqual(resultPost);
-
-      const requestCall = fetchMock.calls('/api/posts/new')[0];
-      expect(requestCall[1]).toEqual(
-        expect.objectContaining({ method: 'POST' }),
-      );
-    });
     it.skip('respects bodyBuilder for mutations', async () => {
       expect.assertions(2);
 
@@ -2181,6 +2137,7 @@ describe('Mutation', () => {
       );
       expect(requestCall[1].body).toEqual(JSON.stringify({ id: '1' }));
     });
+
     it.skip('throws when no body input is provided for HTTP methods other than GET or DELETE', async () => {
       expect.assertions(1);
 
