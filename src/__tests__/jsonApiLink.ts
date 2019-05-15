@@ -871,7 +871,7 @@ describe('Query multiple calls', () => {
     expect(data.post.tags).toBeDefined();
   });
 
-  it.skip('can return a partial result if one out of multiple rest calls fail', async () => {
+  it('can return a partial result if one out of multiple rest calls fail', async () => {
     expect.assertions(2);
 
     const link = new JsonApiLink({ uri: '/api' });
@@ -881,7 +881,12 @@ describe('Query multiple calls', () => {
       body: { status: 'error', message: 'Not found' },
     });
 
-    const tags = [{ name: 'apollo' }, { name: 'graphql' }];
+    const tags = {
+      data: [
+        { type: 'tags', id: '1', attributes: { name: 'apollo' } },
+        { type: 'tags', id: '2', attributes: { name: 'graphql' } },
+      ],
+    };
     fetchMock.get('/api/tags', tags);
 
     const postAndTags = gql`
