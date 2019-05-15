@@ -42,7 +42,7 @@ const orderDupPreservingFlattenedHeaders: (
 
 const sampleQuery = gql`
   query post {
-    post(id: "1") @jsonapi(path: "/post/:id") {
+    post(id: "1") @jsonapi(path: "/post/{args.id}") {
       id
     }
   }
@@ -1001,7 +1001,7 @@ describe('Query options', () => {
     fetchMock.restore();
   });
   describe('credentials', () => {
-    it.skip('adds credentials to the request from the setup', async () => {
+    it('adds credentials to the request from the setup', async () => {
       expect.assertions(1);
       const link = new JsonApiLink({
         uri: '/api',
@@ -1011,7 +1011,9 @@ describe('Query options', () => {
         credentials: 'my-credentials' as RequestCredentials,
       });
 
-      const post = { id: '1', Title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { Title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
       await makePromise<Result>(
@@ -1025,7 +1027,7 @@ describe('Query options', () => {
       expect(credentials).toBe('my-credentials');
     });
 
-    it.skip('adds credentials to the request from the context', async () => {
+    it('adds credentials to the request from the context', async () => {
       expect.assertions(2);
 
       const credentialsMiddleware = new ApolloLink((operation, forward) => {
@@ -1044,7 +1046,9 @@ describe('Query options', () => {
         new JsonApiLink({ uri: '/api' }),
       ]);
 
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
       await makePromise<Result>(
@@ -1058,7 +1062,7 @@ describe('Query options', () => {
       expect(credentials).toBe('my-credentials');
     });
 
-    it.skip('prioritizes context credentials over setup credentials', async () => {
+    it('prioritizes context credentials over setup credentials', async () => {
       expect.assertions(2);
 
       const credentialsMiddleware = new ApolloLink((operation, forward) => {
@@ -1080,7 +1084,9 @@ describe('Query options', () => {
         }),
       ]);
 
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
       await makePromise<Result>(
@@ -1094,7 +1100,7 @@ describe('Query options', () => {
       expect(credentials).toBe('my-credentials');
     });
 
-    it.skip('sets the fetch responses on context.restResponses', async () => {
+    it('sets the fetch responses on context.restResponses', async () => {
       expect.assertions(5);
 
       const credentialsMiddleware = new ApolloLink((operation, forward) => {
@@ -1116,13 +1122,20 @@ describe('Query options', () => {
 
       const context: { restResponses?: Response[] } = {};
 
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', {
         body: post,
         headers: { Header1: 'Header1' },
       });
 
-      const tags = [{ name: 'apollo' }, { name: 'graphql' }];
+      const tags = {
+        data: [
+          { type: 'tags', id: '1', attributes: { name: 'apollo' } },
+          { type: 'tags', id: '2', attributes: { name: 'graphql' } },
+        ],
+      };
       fetchMock.get('/api/tags', {
         body: tags,
         headers: { Header2: 'Header2' },
@@ -1149,6 +1162,7 @@ describe('Query options', () => {
       );
     });
   });
+
   describe('method', () => {
     it.skip('works for GET requests', async () => {
       expect.assertions(1);
