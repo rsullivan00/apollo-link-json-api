@@ -540,7 +540,7 @@ describe('Query single call', () => {
     });
   });
 
-  it.skip('returns an error on unsuccessful gets with zero Content-Length', async () => {
+  it('returns an error on unsuccessful gets with zero Content-Length', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
@@ -548,13 +548,13 @@ describe('Query single call', () => {
     fetchMock.get('/api/no-content', {
       headers: { 'Content-Length': 0 },
       status: 400,
-      body: { hasNoContent: true },
+      body: { content: true },
     });
 
     const errorWithNoContent = gql`
       query noContent {
-        noContentResponse @jsonapi(type: "NoContent", path: "/no-content") {
-          hasNoContent
+        noContentResponse @jsonapi(path: "/no-content") {
+          content
         }
       }
     `;
