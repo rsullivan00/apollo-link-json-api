@@ -91,9 +91,6 @@ const jsonapiResponseTransformer = async response =>
     .then(applyToData(typenameResource))
     .then(applyToData(denormalizeRelationships))
     .then(applyToData(flattenResource))
-    .then(({ data, included }) => data)
-    // TODO Remove this debugging code
-    // .then(r => console.log(r) || r)
-    .catch(e => console.error(e));
+    .then(({ data, included }) => data);
 
 export default jsonapiResponseTransformer;
