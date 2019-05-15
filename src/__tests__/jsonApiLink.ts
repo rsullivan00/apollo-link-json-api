@@ -830,16 +830,22 @@ describe('Query multiple calls', () => {
     expect(data.tags).toBeDefined();
   });
 
-  it.skip('can run a subquery with multiple rest calls', async () => {
+  it('can run a subquery with multiple rest calls', async () => {
     expect.assertions(2);
-    ``;
 
     const link = new JsonApiLink({ uri: '/api' });
 
-    const post = { id: '1', title: 'Love apollo' };
+    const post = {
+      data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+    };
     fetchMock.get('/api/post/1', post);
 
-    const tags = [{ name: 'apollo' }, { name: 'graphql' }];
+    const tags = {
+      data: [
+        { type: 'tags', id: '1', attributes: { name: 'apollo' } },
+        { type: 'tags', id: '2', attributes: { name: 'graphql' } },
+      ],
+    };
     fetchMock.get('/api/tags', tags);
 
     const postAndTags = gql`
