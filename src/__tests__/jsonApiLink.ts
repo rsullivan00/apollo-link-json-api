@@ -268,7 +268,7 @@ describe('Configuration', async () => {
   });
 
   describe('Default endpoint', () => {
-    it.skip('should produce a warning if not specified', async () => {
+    it('should produce a warning if not specified', async () => {
       let warning = '';
       const warn = message => (warning = message);
 
@@ -285,7 +285,7 @@ describe('Configuration', async () => {
       );
     });
 
-    it.skip('should not produce a warning when specified', async () => {
+    it('should not produce a warning when specified', async () => {
       let warning = '';
       const warn = message => (warning = message);
 
