@@ -809,11 +809,11 @@ describe('Query multiple calls', () => {
 
     const postAndTags = gql`
       query postAndTags {
-        post @jsonapi(type: "Post", path: "/post/1") {
+        post @jsonapi(path: "/post/1") {
           id
           title
         }
-        tags @jsonapi(type: "[Tag]", path: "/tags") {
+        tags @jsonapi(path: "/tags") {
           name
         }
       }
@@ -850,10 +850,10 @@ describe('Query multiple calls', () => {
 
     const postAndTags = gql`
       query postAndTags {
-        post @jsonapi(type: "Post", path: "/post/1") {
+        post @jsonapi(path: "/post/1") {
           id
           title
-          tags @jsonapi(type: "[Tag]", path: "/tags") {
+          tags @jsonapi(path: "/tags") {
             name
           }
         }
@@ -891,11 +891,11 @@ describe('Query multiple calls', () => {
 
     const postAndTags = gql`
       query postAndTags {
-        post @jsonapi(type: "Post", path: "/post/1") {
+        post @jsonapi(path: "/post/1") {
           id
           title
         }
-        tags @jsonapi(type: "[Tag]", path: "/tags") {
+        tags @jsonapi(path: "/tags") {
           name
         }
       }
