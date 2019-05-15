@@ -56,7 +56,7 @@ describe('Configuration', async () => {
       fetchMock.restore();
     });
 
-    it.skip('throws without any config', () => {
+    it('throws without any config', () => {
       expect.assertions(3);
 
       expect(() => {
@@ -70,23 +70,26 @@ describe('Configuration', async () => {
       }).toThrow();
     });
 
-    it.skip('throws with mismatched config', () => {
+    it('throws with mismatched config', () => {
       expect.assertions(1);
       expect(() => {
         new JsonApiLink({ uri: '/correct', endpoints: { '': '/mismatched' } });
       }).toThrow();
     });
 
-    it.skip('throws if missing both path and pathBuilder', async () => {
+    it('throws if missing both path and pathBuilder', async () => {
       expect.assertions(1);
 
       const link = new JsonApiLink({ uri: '/api' });
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1' },
+        attributes: { title: 'Love apollo' },
+      };
       fetchMock.get('/api/post/1', post);
 
       const postTitleQuery = gql`
         query postTitle {
-          post @jsonapi() {
+          post @jsonapi(placeholder: "placeholder") {
             id
             title
           }
@@ -107,7 +110,7 @@ describe('Configuration', async () => {
       }
     });
 
-    it.skip("Doesn't throw on good configs", () => {
+    it("Doesn't throw on good configs", () => {
       expect.assertions(1);
 
       new JsonApiLink({ uri: '/correct' });
