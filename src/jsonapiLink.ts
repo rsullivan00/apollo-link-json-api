@@ -930,7 +930,6 @@ const resolver: Resolver = async (
     method,
     type,
     fieldNameDenormalizer: perRequestNameDenormalizer,
-    bodySerializer,
   } = directives.rest as JsonApiLink.DirectiveOptions;
   if (!method) {
     method = 'GET';
@@ -948,20 +947,7 @@ const resolver: Resolver = async (
 
     let serializedBody: JsonApiLink.SerializedBody;
 
-    if (typeof bodySerializer === 'string') {
-      if (!serializers.hasOwnProperty(bodySerializer)) {
-        throw new Error(
-          '"bodySerializer" must correspond to configured serializer. ' +
-            `Please make sure to specify a serializer called ${bodySerializer} in the "bodySerializers" property of the JsonApiLink.`,
-        );
-      }
-      serializedBody = serializers[bodySerializer](body, headers);
-    } else {
-      serializedBody = bodySerializer
-        ? bodySerializer(body, headers)
-        : serializers[DEFAULT_SERIALIZER_KEY](body, headers);
-    }
-
+    serializedBody = serializers[DEFAULT_SERIALIZER_KEY](body, headers);
     body = serializedBody.body;
     overrideHeaders = new Headers(serializedBody.headers);
   }
