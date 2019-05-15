@@ -32,7 +32,7 @@ import { Resolver, ExecInfo } from 'graphql-anywhere';
 import * as qs from 'qs';
 import { removeRestSetsFromDocument } from './utils';
 
-export namespace RestLink {
+export namespace JsonApiLink {
   export type URI = string;
 
   export type Endpoint = string;
@@ -87,7 +87,7 @@ export namespace RestLink {
 
   export type ResponseTransformer = (data: any, typeName: string) => any;
 
-  export interface RestLinkHelperProps {
+  export interface JsonApiLinkHelperProps {
     /** Arguments passed in via normal graphql parameters */
     args: { [key: string]: any };
     /** Arguments added via @export(as: ) directives */
@@ -99,8 +99,8 @@ export namespace RestLink {
     /** All arguments passed to the `@rest(...)` directive */
     '@rest': { [key: string]: any };
   }
-  export interface PathBuilderProps extends RestLinkHelperProps {
-    replacer: (opts: RestLinkHelperProps) => string;
+  export interface PathBuilderProps extends JsonApiLinkHelperProps {
+    replacer: (opts: JsonApiLinkHelperProps) => string;
   }
 
   /**
@@ -205,7 +205,7 @@ export namespace RestLink {
     path?: string;
     /**
      * What endpoint to select from the map of endpoints available to this link.
-     * @default `RestLink.endpoints[DEFAULT_ENDPOINT_KEY]`
+     * @default `JsonApiLink.endpoints[DEFAULT_ENDPOINT_KEY]`
      */
     endpoint?: string;
     /**
@@ -226,7 +226,7 @@ export namespace RestLink {
      *
      * Warning: This is an Advanced API and we are looking for syntactic & ergonomics feedback.
      */
-    bodyBuilder?: (props: RestLinkHelperProps) => object;
+    bodyBuilder?: (props: JsonApiLinkHelperProps) => object;
     /**
      * Optional field that defines the name of the env var to extract and use as the body
      * @default "input"
@@ -238,18 +238,18 @@ export namespace RestLink {
      * Optional serialization function or a key that will be used look up the serializer to serialize the request body before transport.
      * @default if null will fallback to the default serializer
      */
-    bodySerializer?: RestLink.Serializer | string;
+    bodySerializer?: JsonApiLink.Serializer | string;
 
     /**
      * A per-request name denormalizer, this permits special endpoints to have their
      * field names remapped differently from the default.
-     * @default Uses RestLink.fieldNameDenormalizer
+     * @default Uses JsonApiLink.fieldNameDenormalizer
      */
-    fieldNameDenormalizer?: RestLink.FieldNameNormalizer;
+    fieldNameDenormalizer?: JsonApiLink.FieldNameNormalizer;
     /**
      * A method to allow insertion of __typename deep in response objects
      */
-    typePatcher?: RestLink.FunctionalTypePatcher;
+    typePatcher?: JsonApiLink.FunctionalTypePatcher;
   }
 }
 
@@ -269,12 +269,24 @@ const popOneSetOfArrayBracketsFromTypeName = (typename: string): string => {
 const addTypeNameToResult = (
   result: any[] | object,
   __typename: string,
-  typePatcher: RestLink.FunctionalTypePatcher,
+  typePatcher: JsonApiLink.FunctionalTypePatcher,
 ): any[] | object => {
+  console.log('In addTypeNameToResult');
+  console.log(result);
   if (Array.isArray(result)) {
-    const fixedTypename = popOneSetOfArrayBracketsFromTypeName(__typename);
+    let fixedTypename;
+    try {
+      fixedTypename = popOneSetOfArrayBracketsFromTypeName(__typename);
+    } catch (e) {
+      debugger;
+    }
     // Recursion needed for multi-dimensional arrays
-    return result.map(e => addTypeNameToResult(e, fixedTypename, typePatcher));
+    const mappedResult = result.map(e =>
+      addTypeNameToResult(e, fixedTypename, typePatcher),
+    );
+    console.log('result', result);
+    console.log('mappedResult', mappedResult);
+    return mappedResult;
   }
   if (
     null == result ||
@@ -456,9 +468,9 @@ function insertNullsForAnyOmittedFields(
 }
 
 const getEndpointOptions = (
-  endpoints: RestLink.Endpoints,
-  endpoint: RestLink.Endpoint,
-): RestLink.EndpointOptions => {
+  endpoints: JsonApiLink.Endpoints,
+  endpoint: JsonApiLink.Endpoint,
+): JsonApiLink.EndpointOptions => {
   const result =
     endpoints[endpoint || DEFAULT_ENDPOINT_KEY] ||
     endpoints[DEFAULT_ENDPOINT_KEY];
@@ -485,11 +497,11 @@ const replaceLegacyParam = (
   return endpoint.replace(`:${name}`, value);
 };
 
-/** Internal Tool that Parses Paths for RestLink -- This API should be considered experimental */
+/** Internal Tool that Parses Paths for JsonApiLink -- This API should be considered experimental */
 export class PathBuilder {
   /** For accelerating the replacement of paths that are used a lot */
   private static cache: {
-    [path: string]: (props: RestLink.PathBuilderProps) => string;
+    [path: string]: (props: JsonApiLink.PathBuilderProps) => string;
   } = {};
   /** Table to limit the amount of nagging (due to probable API Misuse) we do to once per path per launch */
   private static warnTable: { [key: string]: true } = {};
@@ -498,7 +510,7 @@ export class PathBuilder {
 
   static replacerForPath(
     path: string,
-  ): (props: RestLink.PathBuilderProps) => string {
+  ): (props: JsonApiLink.PathBuilderProps) => string {
     if (path in PathBuilder.cache) {
       return PathBuilder.cache[path];
     }
@@ -509,7 +521,10 @@ export class PathBuilder {
     const chunkActions: Array<
       | true // We're enabling the qs-encoder
       | string // This is a raw string bit, don't mess with it
-      | ((props: RestLink.RestLinkHelperProps, useQSEncoder: boolean) => string)
+      | ((
+          props: JsonApiLink.JsonApiLinkHelperProps,
+          useQSEncoder: boolean,
+        ) => string)
     > = [];
 
     let hasBegunQuery = false;
@@ -524,7 +539,10 @@ export class PathBuilder {
         const _keyPath = bit.slice(1, bit.length - 1).split('.');
 
         chunkActions.push(
-          (props: RestLink.RestLinkHelperProps, useQSEncoder: boolean) => {
+          (
+            props: JsonApiLink.JsonApiLinkHelperProps,
+            useQSEncoder: boolean,
+          ) => {
             try {
               const value = PathBuilderLookupValue(props, _keyPath);
               if (
@@ -539,9 +557,9 @@ export class PathBuilder {
               const key = [path, _keyPath.join('.')].join('|');
               if (!(key in PathBuilder.warnTable)) {
                 console.warn(
-                  'Warning: RestLink caught an error while unpacking',
+                  'Warning: JsonApiLink caught an error while unpacking',
                   key,
-                  "This tends to happen if you forgot to pass a parameter needed for creating an @rest(path, or if RestLink was configured to deeply unpack a path parameter that wasn't provided. This message will only log once per detected instance. Trouble-shooting hint: check @rest(path: and the variables provided to this query.",
+                  "This tends to happen if you forgot to pass a parameter needed for creating an @rest(path, or if JsonApiLink was configured to deeply unpack a path parameter that wasn't provided. This message will only log once per detected instance. Trouble-shooting hint: check @rest(path: and the variables provided to this query.",
                 );
                 PathBuilder.warnTable[key] = true;
               }
@@ -559,7 +577,7 @@ export class PathBuilder {
       return nextIndex;
     }, 0);
 
-    const result: (props: RestLink.PathBuilderProps) => string = props => {
+    const result: (props: JsonApiLink.PathBuilderProps) => string = props => {
       let hasEnteredQuery = false;
       const tmp = chunkActions.reduce((accumulator: string, action): string => {
         if (typeof action === 'string') {
@@ -595,10 +613,10 @@ const noMangleKeys = ['__typename'];
 /** Recursively descends the provided object tree and converts all the keys */
 const convertObjectKeys = (
   object: object,
-  __converter: RestLink.FieldNameNormalizer,
+  __converter: JsonApiLink.FieldNameNormalizer,
   keypath: string[] = [],
 ): object => {
-  let converter: RestLink.FieldNameNormalizer = null;
+  let converter: JsonApiLink.FieldNameNormalizer = null;
   if (__converter.length != 2) {
     converter = (name, keypath) => {
       return __converter(name);
@@ -646,7 +664,7 @@ const convertObjectKeys = (
   }, {});
 };
 
-const noOpNameNormalizer: RestLink.FieldNameNormalizer = (name: string) => {
+const noOpNameNormalizer: JsonApiLink.FieldNameNormalizer = (name: string) => {
   return name;
 };
 
@@ -654,7 +672,7 @@ const noOpNameNormalizer: RestLink.FieldNameNormalizer = (name: string) => {
  * Helper that makes sure our headers are of the right type to pass to Fetch
  */
 export const normalizeHeaders = (
-  headers: RestLink.InitializationHeaders,
+  headers: JsonApiLink.InitializationHeaders,
 ): Headers => {
   // Make sure that our headers object is of the right type
   if (headers instanceof Headers) {
@@ -668,7 +686,7 @@ export const normalizeHeaders = (
  * Returns a new Headers Group that contains all the headers.
  * - If there are duplicates, they will be in the returned header set multiple times!
  */
-export const concatHeadersMergePolicy: RestLink.HeadersMergePolicy = (
+export const concatHeadersMergePolicy: JsonApiLink.HeadersMergePolicy = (
   ...headerGroups: Headers[]
 ): Headers => {
   return headerGroups.reduce((accumulator, current) => {
@@ -708,7 +726,7 @@ export const overrideHeadersMergePolicyHelper = overrideHeadersMergePolicy; // D
 
 const makeOverrideHeadersMergePolicy = (
   headersToOverride: string[],
-): RestLink.HeadersMergePolicy => {
+): JsonApiLink.HeadersMergePolicy => {
   return (linkHeaders, requestHeaders) => {
     return overrideHeadersMergePolicy(
       linkHeaders,
@@ -756,7 +774,7 @@ const rethrowServerSideError = (
   result: any,
   message: string,
 ) => {
-  const error = new Error(message) as RestLink.ServerError;
+  const error = new Error(message) as JsonApiLink.ServerError;
 
   error.response = response;
   error.statusCode = response.status;
@@ -771,10 +789,10 @@ interface LinkChainContext {
   credentials?: RequestCredentials | null;
 
   /** Headers the user wants to set on this request. See also headersMergePolicy */
-  headers?: RestLink.InitializationHeaders | null;
+  headers?: JsonApiLink.InitializationHeaders | null;
 
   /** Will default to concatHeadersMergePolicy unless headersToOverride is set */
-  headersMergePolicy?: RestLink.HeadersMergePolicy | null;
+  headersMergePolicy?: JsonApiLink.HeadersMergePolicy | null;
 
   /** List of headers to override, passing this will swap headersMergePolicy if necessary */
   headersToOverride?: string[] | null;
@@ -794,21 +812,22 @@ interface RequestContext {
   /** Exported variables fulfilled in this request, using @export(as:). They are stored keyed by node to support deeply nested structures with exports at multiple levels */
   exportVariablesByNode: Map<any, { [key: string]: any }>;
 
-  endpoints: RestLink.Endpoints;
-  customFetch: RestLink.CustomFetch;
+  endpoints: JsonApiLink.Endpoints;
+  customFetch: JsonApiLink.CustomFetch;
   operationType: OperationTypeNode;
-  fieldNameNormalizer: RestLink.FieldNameNormalizer;
-  fieldNameDenormalizer: RestLink.FieldNameNormalizer;
+  fieldNameNormalizer: JsonApiLink.FieldNameNormalizer;
+  fieldNameDenormalizer: JsonApiLink.FieldNameNormalizer;
   mainDefinition: OperationDefinitionNode | FragmentDefinitionNode;
   fragmentDefinitions: FragmentDefinitionNode[];
-  typePatcher: RestLink.FunctionalTypePatcher;
-  serializers: RestLink.Serializers;
-  responseTransformer: RestLink.ResponseTransformer;
+  typePatcher: JsonApiLink.FunctionalTypePatcher;
+  serializers: JsonApiLink.Serializers;
+  responseTransformer: JsonApiLink.ResponseTransformer;
 
   /** An array of the responses from each fetched URL */
   responses: Response[];
 }
 
+// Rick: We can ignore this
 const addTypeToNode = (node, typename) => {
   if (node === null || node === undefined || typeof node !== 'object') {
     return node;
@@ -899,7 +918,7 @@ const resolver: Resolver = async (
     path,
     endpoint,
     pathBuilder,
-  } = directives.rest as RestLink.DirectiveOptions;
+  } = directives.rest as JsonApiLink.DirectiveOptions;
 
   const endpointOption = getEndpointOptions(endpoints, endpoint);
   const neitherPathsProvided = path == null && pathBuilder == null;
@@ -921,7 +940,7 @@ const resolver: Resolver = async (
       pathBuilder = ({
         args,
         exportVariables,
-      }: RestLink.PathBuilderProps): string => {
+      }: JsonApiLink.PathBuilderProps): string => {
         const legacyArgs = {
           ...args,
           ...exportVariables,
@@ -942,7 +961,7 @@ const resolver: Resolver = async (
       };
     }
   }
-  const allParams: RestLink.PathBuilderProps = {
+  const allParams: JsonApiLink.PathBuilderProps = {
     args,
     exportVariables,
     context,
@@ -958,7 +977,7 @@ const resolver: Resolver = async (
     bodyKey,
     fieldNameDenormalizer: perRequestNameDenormalizer,
     bodySerializer,
-  } = directives.rest as RestLink.DirectiveOptions;
+  } = directives.rest as JsonApiLink.DirectiveOptions;
   if (!method) {
     method = 'GET';
   }
@@ -995,13 +1014,13 @@ const resolver: Resolver = async (
         noOpNameNormalizer,
     );
 
-    let serializedBody: RestLink.SerializedBody;
+    let serializedBody: JsonApiLink.SerializedBody;
 
     if (typeof bodySerializer === 'string') {
       if (!serializers.hasOwnProperty(bodySerializer)) {
         throw new Error(
           '"bodySerializer" must correspond to configured serializer. ' +
-            `Please make sure to specify a serializer called ${bodySerializer} in the "bodySerializers" property of the RestLink.`,
+            `Please make sure to specify a serializer called ${bodySerializer} in the "bodySerializers" property of the JsonApiLink.`,
         );
       }
       serializedBody = serializers[bodySerializer](body, headers);
@@ -1106,7 +1125,7 @@ const DEFAULT_ENDPOINT_KEY = '';
  */
 const DEFAULT_SERIALIZER_KEY = '';
 
-const DEFAULT_JSON_SERIALIZER: RestLink.Serializer = (
+const DEFAULT_JSON_SERIALIZER: JsonApiLink.Serializer = (
   data: any,
   headers: Headers,
 ) => {
@@ -1120,18 +1139,18 @@ const DEFAULT_JSON_SERIALIZER: RestLink.Serializer = (
 };
 
 /**
- * RestLink is an apollo-link for communicating with REST services using GraphQL on the client-side
+ * JsonApiLink is an apollo-link for communicating with REST services using GraphQL on the client-side
  */
-export class RestLink extends ApolloLink {
-  private readonly endpoints: RestLink.Endpoints;
+export class JsonApiLink extends ApolloLink {
+  private readonly endpoints: JsonApiLink.Endpoints;
   private readonly headers: Headers;
-  private readonly fieldNameNormalizer: RestLink.FieldNameNormalizer;
-  private readonly fieldNameDenormalizer: RestLink.FieldNameNormalizer;
-  private readonly typePatcher: RestLink.FunctionalTypePatcher;
+  private readonly fieldNameNormalizer: JsonApiLink.FieldNameNormalizer;
+  private readonly fieldNameDenormalizer: JsonApiLink.FieldNameNormalizer;
+  private readonly typePatcher: JsonApiLink.FunctionalTypePatcher;
   private readonly credentials: RequestCredentials;
-  private readonly customFetch: RestLink.CustomFetch;
-  private readonly serializers: RestLink.Serializers;
-  private readonly responseTransformer: RestLink.ResponseTransformer;
+  private readonly customFetch: JsonApiLink.CustomFetch;
+  private readonly serializers: JsonApiLink.Serializers;
+  private readonly responseTransformer: JsonApiLink.ResponseTransformer;
 
   constructor({
     uri,
@@ -1145,7 +1164,7 @@ export class RestLink extends ApolloLink {
     bodySerializers,
     defaultSerializer,
     responseTransformer,
-  }: RestLink.Options) {
+  }: JsonApiLink.Options) {
     super();
     const fallback = {};
     fallback[DEFAULT_ENDPOINT_KEY] = uri || '';
@@ -1153,14 +1172,14 @@ export class RestLink extends ApolloLink {
 
     if (uri == null && endpoints == null) {
       throw new Error(
-        'A RestLink must be initialized with either 1 uri, or a map of keyed-endpoints',
+        'A JsonApiLink must be initialized with either 1 uri, or a map of keyed-endpoints',
       );
     }
     if (uri != null) {
       const currentDefaultURI = (endpoints || {})[DEFAULT_ENDPOINT_KEY];
       if (currentDefaultURI != null && currentDefaultURI != uri) {
         throw new Error(
-          "RestLink was configured with a default uri that doesn't match what's passed in to the endpoints map.",
+          "JsonApiLink was configured with a default uri that doesn't match what's passed in to the endpoints map.",
         );
       }
       this.endpoints[DEFAULT_ENDPOINT_KEY] = uri;
@@ -1168,12 +1187,13 @@ export class RestLink extends ApolloLink {
 
     if (this.endpoints[DEFAULT_ENDPOINT_KEY] == null) {
       console.warn(
-        'RestLink configured without a default URI. All @rest(…) directives must provide an endpoint key!',
+        'JsonApiLink configured without a default URI. All @rest(…) directives must provide an endpoint key!',
       );
     }
 
     if (typePatcher == null) {
       this.typePatcher = (result, __typename, _2) => {
+        console.log(`Type patching ${__typename} into ${result.__typename}`);
         return { __typename, ...result };
       };
     } else if (
@@ -1187,11 +1207,11 @@ export class RestLink extends ApolloLink {
           true,
         )
     ) {
-      const table: RestLink.TypePatcherTable = typePatcher;
+      const table: JsonApiLink.TypePatcherTable = typePatcher;
       this.typePatcher = (
         data: any,
         outerType: string,
-        patchDeeper: RestLink.FunctionalTypePatcher,
+        patchDeeper: JsonApiLink.FunctionalTypePatcher,
       ) => {
         const __typename = data.__typename || outerType;
         if (Array.isArray(data)) {
@@ -1205,7 +1225,7 @@ export class RestLink extends ApolloLink {
       };
     } else {
       throw new Error(
-        'RestLink was configured with a typePatcher of invalid type!',
+        'JsonApiLink was configured with a typePatcher of invalid type!',
       );
     }
 
@@ -1214,7 +1234,7 @@ export class RestLink extends ApolloLink {
       bodySerializers.hasOwnProperty(DEFAULT_SERIALIZER_KEY)
     ) {
       console.warn(
-        'RestLink was configured to override the default serializer! This may result in unexpected behavior',
+        'JsonApiLink was configured to override the default serializer! This may result in unexpected behavior',
       );
     }
 
@@ -1244,7 +1264,7 @@ export class RestLink extends ApolloLink {
     const nonRest = removeRestSetsFromDocument(query);
 
     // 1. Use the user's merge policy if any
-    let headersMergePolicy: RestLink.HeadersMergePolicy =
+    let headersMergePolicy: JsonApiLink.HeadersMergePolicy =
       context.headersMergePolicy;
     if (
       headersMergePolicy == null &&

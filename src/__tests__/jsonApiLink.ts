@@ -11,7 +11,7 @@ const snake_case = require('snake-case');
 import * as fetchMock from 'fetch-mock';
 
 import {
-  RestLink,
+  JsonApiLink,
   validateRequestMethodForOperationType,
   normalizeHeaders,
 } from '../restLink';
@@ -60,27 +60,27 @@ describe('Configuration', async () => {
       expect.assertions(3);
 
       expect(() => {
-        new RestLink(undefined);
+        new JsonApiLink(undefined);
       }).toThrow();
       expect(() => {
-        new RestLink({} as any);
+        new JsonApiLink({} as any);
       }).toThrow();
       expect(() => {
-        new RestLink({ bogus: '' } as any);
+        new JsonApiLink({ bogus: '' } as any);
       }).toThrow();
     });
 
     it('throws with mismatched config', () => {
       expect.assertions(1);
       expect(() => {
-        new RestLink({ uri: '/correct', endpoints: { '': '/mismatched' } });
+        new JsonApiLink({ uri: '/correct', endpoints: { '': '/mismatched' } });
       }).toThrow();
     });
 
     it('throws if missing both path and pathBuilder', async () => {
       expect.assertions(1);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
       const post = { id: '1', title: 'Love apollo' };
       fetchMock.get('/api/post/1', post);
 
@@ -114,25 +114,25 @@ describe('Configuration', async () => {
       const pretendItsJavascript = (arg: any): any => arg;
 
       expect(() => {
-        new RestLink({
+        new JsonApiLink({
           uri: '/correct',
           typePatcher: pretendItsJavascript(-1),
         });
       }).toThrow();
       expect(() => {
-        new RestLink({
+        new JsonApiLink({
           uri: '/correct',
           typePatcher: pretendItsJavascript('fail'),
         });
       }).toThrow();
       expect(() => {
-        new RestLink({
+        new JsonApiLink({
           uri: '/correct',
           typePatcher: pretendItsJavascript([]),
         });
       }).toThrow();
       expect(() => {
-        new RestLink({
+        new JsonApiLink({
           uri: '/correct',
           typePatcher: pretendItsJavascript({
             key: 'my values are not functions',
@@ -144,13 +144,13 @@ describe('Configuration', async () => {
     it("Doesn't throw on good configs", () => {
       expect.assertions(1);
 
-      new RestLink({ uri: '/correct' });
-      new RestLink({ uri: '/correct', endpoints: { other: '/other' } });
-      new RestLink({
+      new JsonApiLink({ uri: '/correct' });
+      new JsonApiLink({ uri: '/correct', endpoints: { other: '/other' } });
+      new JsonApiLink({
         uri: '/correct',
         endpoints: { '': '/correct', other: '/other' },
       });
-      new RestLink({ endpoints: { '': '/correct', other: '/other' } });
+      new JsonApiLink({ endpoints: { '': '/correct', other: '/other' } });
 
       expect(true).toBe(true);
     });
@@ -162,7 +162,7 @@ describe('Configuration', async () => {
     });
     it('should apply fieldNameNormalizer if specified', async () => {
       expect.assertions(3);
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
         fieldNameNormalizer: camelCase,
       });
@@ -203,7 +203,7 @@ describe('Configuration', async () => {
     });
     it('should preserve __typename when using fieldNameNormalizer', async () => {
       expect.assertions(2);
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
         fieldNameNormalizer: camelCase,
       });
@@ -245,7 +245,7 @@ describe('Configuration', async () => {
     it('should apply customFetch if specified', async () => {
       expect.assertions(1);
 
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
         customFetch: (uri, options) =>
           new Promise((resolve, reject) => {
@@ -280,14 +280,14 @@ describe('Configuration', async () => {
 
       console['warn'] = jest.fn(warn);
 
-      new RestLink({
+      new JsonApiLink({
         endpoints: {
           endpointUri: '/api',
         },
       });
 
       expect(warning).toBe(
-        'RestLink configured without a default URI. All @rest(…) directives must provide an endpoint key!',
+        'JsonApiLink configured without a default URI. All @rest(…) directives must provide an endpoint key!',
       );
     });
 
@@ -297,7 +297,7 @@ describe('Configuration', async () => {
 
       console['warn'] = jest.fn(warn);
 
-      new RestLink({
+      new JsonApiLink({
         uri: '/api/v1',
         endpoints: {
           endpointUri: '/api/v2',
@@ -317,7 +317,7 @@ describe('Complex responses need nested __typename insertions', () => {
       data: any,
       key: string,
       __typename: string,
-      patcher: RestLink.FunctionalTypePatcher,
+      patcher: JsonApiLink.FunctionalTypePatcher,
     ) => {
       const value = data[key];
       if (value == null) {
@@ -326,11 +326,11 @@ describe('Complex responses need nested __typename insertions', () => {
       const result = { [key]: patcher(value, __typename, patcher) };
       return result;
     };
-    const typePatcher: RestLink.TypePatcherTable = {
+    const typePatcher: JsonApiLink.TypePatcherTable = {
       Outer: (
         obj: any,
         outerType: string,
-        patchDeeper: RestLink.FunctionalTypePatcher,
+        patchDeeper: JsonApiLink.FunctionalTypePatcher,
       ) => {
         if (obj == null) {
           return obj;
@@ -351,7 +351,7 @@ describe('Complex responses need nested __typename insertions', () => {
       Inner1: (
         obj: any,
         outerType: string,
-        patchDeeper: RestLink.FunctionalTypePatcher,
+        patchDeeper: JsonApiLink.FunctionalTypePatcher,
       ) => {
         if (obj == null) {
           return obj;
@@ -364,7 +364,7 @@ describe('Complex responses need nested __typename insertions', () => {
       SimpleDoubleNesting: (
         obj: any,
         outerType: string,
-        patchDeeper: RestLink.FunctionalTypePatcher,
+        patchDeeper: JsonApiLink.FunctionalTypePatcher,
       ) => {
         if (obj == null) {
           return obj;
@@ -378,7 +378,7 @@ describe('Complex responses need nested __typename insertions', () => {
       NestedArrays: (
         obj: any,
         outerType: string,
-        patchDeeper: RestLink.FunctionalTypePatcher,
+        patchDeeper: JsonApiLink.FunctionalTypePatcher,
       ) => {
         if (obj == null) {
           return obj;
@@ -402,7 +402,7 @@ describe('Complex responses need nested __typename insertions', () => {
       },
     };
 
-    const link = new RestLink({ uri: '/api', typePatcher });
+    const link = new JsonApiLink({ uri: '/api', typePatcher });
     const root = {
       id: '1',
       inner1: { data: 'outer.inner1', reused: { id: 1 } },
@@ -497,7 +497,7 @@ describe('Complex responses need nested __typename insertions', () => {
   it('can configure typename by using @type annotations', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
     const root = {
       id: '1',
       inner1: { data: 'outer.inner1', reused: { id: 1 } },
@@ -596,7 +596,7 @@ describe('Complex responses need nested __typename insertions', () => {
       data: any,
       key: string,
       __typename: string,
-      patcher: RestLink.FunctionalTypePatcher,
+      patcher: JsonApiLink.FunctionalTypePatcher,
     ) => {
       const value = data[key];
       if (value == null) {
@@ -605,11 +605,11 @@ describe('Complex responses need nested __typename insertions', () => {
       const result = { [key]: patcher(value, __typename, patcher) };
       return result;
     };
-    const typePatcher: RestLink.TypePatcherTable = {
+    const typePatcher: JsonApiLink.TypePatcherTable = {
       Outer: (
         obj: any,
         outerType: string,
-        patchDeeper: RestLink.FunctionalTypePatcher,
+        patchDeeper: JsonApiLink.FunctionalTypePatcher,
       ) => {
         if (obj == null) {
           return obj;
@@ -630,7 +630,7 @@ describe('Complex responses need nested __typename insertions', () => {
       Inner1: (
         obj: any,
         outerType: string,
-        patchDeeper: RestLink.FunctionalTypePatcher,
+        patchDeeper: JsonApiLink.FunctionalTypePatcher,
       ) => {
         if (obj == null) {
           return obj;
@@ -643,7 +643,7 @@ describe('Complex responses need nested __typename insertions', () => {
       SimpleDoubleNesting: (
         obj: any,
         outerType: string,
-        patchDeeper: RestLink.FunctionalTypePatcher,
+        patchDeeper: JsonApiLink.FunctionalTypePatcher,
       ) => {
         if (obj == null) {
           return obj;
@@ -657,7 +657,7 @@ describe('Complex responses need nested __typename insertions', () => {
       NestedArrays: (
         obj: any,
         outerType: string,
-        patchDeeper: RestLink.FunctionalTypePatcher,
+        patchDeeper: JsonApiLink.FunctionalTypePatcher,
       ) => {
         if (obj == null) {
           return obj;
@@ -682,7 +682,7 @@ describe('Complex responses need nested __typename insertions', () => {
       InnerAnnotated: (
         obj: any,
         outerType: string,
-        patchDeeper: RestLink.FunctionalTypePatcher,
+        patchDeeper: JsonApiLink.FunctionalTypePatcher,
       ) => {
         if (obj == null) {
           return obj;
@@ -694,7 +694,7 @@ describe('Complex responses need nested __typename insertions', () => {
       },
     };
 
-    const link = new RestLink({ uri: '/api', typePatcher });
+    const link = new JsonApiLink({ uri: '/api', typePatcher });
     const root = {
       id: '1',
       inner1: { data: 'outer.inner1', reused: { id: 1 } },
@@ -830,7 +830,7 @@ describe('Can customize/parse the response before passing to Apollo', () => {
         post: posts[1],
       });
 
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
         responseTransformer: async (response, type) => {
           expect(type).toBe('Post');
@@ -864,7 +864,7 @@ describe('Can customize/parse the response before passing to Apollo', () => {
         posts,
       });
 
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
         responseTransformer: async (response, type) => {
           expect(type).toBe('[Post]');
@@ -898,7 +898,7 @@ describe('Can customize/parse the response before passing to Apollo', () => {
         post: posts[1],
       });
 
-      const link = new RestLink({
+      const link = new JsonApiLink({
         // This is purpsefully wrong so that we verify the endpoint one is called
         responseTransformer: () =>
           done.fail('Should have called endpoint.responseTransformer'),
@@ -940,7 +940,7 @@ describe('Can customize/parse the response before passing to Apollo', () => {
         posts,
       });
 
-      const link = new RestLink({
+      const link = new JsonApiLink({
         responseTransformer: () =>
           done.fail('Should have called endpoint.responseTransformer'),
         endpoints: {
@@ -983,7 +983,7 @@ describe('Query single call', () => {
   it('can run a simple query', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
     const post = { id: '1', title: 'Love apollo' };
     fetchMock.get('/api/post/1', post);
 
@@ -1008,7 +1008,7 @@ describe('Query single call', () => {
   it('can run a query that returns a scalar (simple types like string, number, boolean) response', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
     const stringResp = 'SecretString';
     fetchMock.get('/api/config', JSON.stringify(stringResp));
 
@@ -1031,7 +1031,7 @@ describe('Query single call', () => {
   it('can run a query that returns an array of scalars', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const arrayResp = ['Id1', 'Id2'];
     fetchMock.get('/api/admins', JSON.stringify(arrayResp));
@@ -1053,7 +1053,7 @@ describe('Query single call', () => {
   it('can get query params regardless of the order', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
     const post = { id: '1', title: 'Love apollo' };
     fetchMock.get('/api/post/1', post);
 
@@ -1079,7 +1079,7 @@ describe('Query single call', () => {
   it('can return array result with typename', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const tags = [{ name: 'apollo' }, { name: 'graphql' }];
     fetchMock.get('/api/tags', tags);
@@ -1129,7 +1129,7 @@ describe('Query single call', () => {
   it('can filter the query result', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const post = {
       id: '1',
@@ -1160,7 +1160,7 @@ describe('Query single call', () => {
   it('can pass param to a query without a variable', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
     const post = { id: '1', title: 'Love apollo' };
     fetchMock.get('/api/post/1', post);
 
@@ -1186,7 +1186,7 @@ describe('Query single call', () => {
   it('can pass param to a query with a variable', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const post = { id: '1', title: 'Love apollo' };
     fetchMock.get('/api/post/1', post);
@@ -1214,7 +1214,7 @@ describe('Query single call', () => {
   it('can pass param with `0` value to a query with a variable', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const post = { id: '1', title: 'Love apollo' };
     fetchMock.get('/api/feed?offset=0', post);
@@ -1243,7 +1243,7 @@ describe('Query single call', () => {
   it('can pass param with `false` value to a query with a variable', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const post = { id: '1', title: 'Love apollo' };
     fetchMock.get('/api/feed?published=false', post);
@@ -1272,7 +1272,7 @@ describe('Query single call', () => {
   it('can pass param with `null` value to a query with a variable', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const person = { name: 'John' };
     fetchMock.get('/api/people?address=null', person);
@@ -1300,7 +1300,7 @@ describe('Query single call', () => {
   it('can hit two endpoints!', async () => {
     expect.assertions(2);
 
-    const link = new RestLink({ endpoints: { v1: '/v1', v2: '/v2' } });
+    const link = new JsonApiLink({ endpoints: { v1: '/v1', v2: '/v2' } });
 
     const postV1 = { id: '1', title: '1. Love apollo' };
     const postV2 = { id: '1', titleText: '2. Love apollo' };
@@ -1346,7 +1346,7 @@ describe('Query single call', () => {
   it('can make a doubly nested query!', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
     const post = {
       id: '1',
       title: 'Love apollo',
@@ -1392,7 +1392,7 @@ describe('Query single call', () => {
   it('returns an empty object on 204 status', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     fetchMock.get('/api/no-content', {
       headers: { 'Content-Length': 0 },
@@ -1426,7 +1426,7 @@ describe('Query single call', () => {
   it('returns an error on unsuccessful gets with zero Content-Length', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     fetchMock.get('/api/no-content', {
       headers: { 'Content-Length': 0 },
@@ -1464,7 +1464,7 @@ describe('Use a custom pathBuilder', () => {
   it('in a basic way', async () => {
     expect.assertions(4);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
     const posts1 = [{ id: '1', title: 'Love apollo' }];
     const posts2 = [{ id: '2', title: 'Love apollo' }];
     fetchMock.get('/api/posts?status=published', posts1);
@@ -1487,7 +1487,7 @@ describe('Use a custom pathBuilder', () => {
     function createPostsPath({
       args,
       exportVariables,
-    }: RestLink.PathBuilderProps) {
+    }: JsonApiLink.PathBuilderProps) {
       const variables = { ...args, ...exportVariables };
       const qs = Object.keys(variables).reduce(
         (acc: string, key: string): string => {
@@ -1570,7 +1570,7 @@ describe('Use a custom pathBuilder', () => {
   it('with correctly encoded params', async () => {
     // expect.assertions(4);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
     const posts1 = [{ id: '1', title: 'Love apollo' }];
     // This is an invalid URL because it doesn't have an encoded space, this is to prove
     // we didn't encode it if it wasn't prefixed by '?' or '&' ?{args} or &{args}
@@ -1652,7 +1652,7 @@ describe('Query multiple calls', () => {
   it('can run a query with multiple rest calls', async () => {
     expect.assertions(2);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const post = { id: '1', title: 'Love apollo' };
     fetchMock.get('/api/post/1', post);
@@ -1687,7 +1687,7 @@ describe('Query multiple calls', () => {
     expect.assertions(2);
     ``;
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const post = { id: '1', title: 'Love apollo' };
     fetchMock.get('/api/post/1', post);
@@ -1721,7 +1721,7 @@ describe('Query multiple calls', () => {
   it('can return a partial result if one out of multiple rest calls fail', async () => {
     expect.assertions(2);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     fetchMock.get('/api/post/1', {
       status: 404,
@@ -1763,7 +1763,7 @@ describe('GraphQL aliases should work', async () => {
   it('outer-level aliases are supported', async () => {
     expect.assertions(2);
 
-    const link = new RestLink({ endpoints: { v1: '/v1', v2: '/v2' } });
+    const link = new JsonApiLink({ endpoints: { v1: '/v1', v2: '/v2' } });
 
     const postV1 = { id: '1', title: '1. Love apollo' };
     const postV2 = { id: '1', titleText: '2. Love apollo' };
@@ -1800,7 +1800,7 @@ describe('GraphQL aliases should work', async () => {
   it('nested aliases are supported', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/v1' });
+    const link = new JsonApiLink({ uri: '/v1' });
 
     const postV1 = { id: '1', titleText: '1. Love apollo' };
     fetchMock.get('/v1/post/1', postV1);
@@ -1833,7 +1833,7 @@ describe('Query options', () => {
   describe('credentials', () => {
     it('adds credentials to the request from the setup', async () => {
       expect.assertions(1);
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
         // Casting to RequestCredentials for testing purposes,
         // the only valid values here defined by RequestCredentials from Fetch
@@ -1871,7 +1871,7 @@ describe('Query options', () => {
 
       const link = ApolloLink.from([
         credentialsMiddleware,
-        new RestLink({ uri: '/api' }),
+        new JsonApiLink({ uri: '/api' }),
       ]);
 
       const post = { id: '1', title: 'Love apollo' };
@@ -1904,7 +1904,7 @@ describe('Query options', () => {
 
       const link = ApolloLink.from([
         credentialsMiddleware,
-        new RestLink({
+        new JsonApiLink({
           uri: '/api',
           credentials: 'wrong-credentials' as RequestCredentials,
         }),
@@ -1941,7 +1941,7 @@ describe('Query options', () => {
 
       const link = ApolloLink.from([
         credentialsMiddleware,
-        new RestLink({ uri: '/api' }),
+        new JsonApiLink({ uri: '/api' }),
       ]);
 
       const context: { restResponses?: Response[] } = {};
@@ -1983,7 +1983,7 @@ describe('Query options', () => {
     it('works for GET requests', async () => {
       expect.assertions(1);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
       const post = { id: '1', title: 'Love apollo' };
       fetchMock.get('/api/post/1', post);
@@ -2014,7 +2014,7 @@ describe('Query options', () => {
     it('works without specifying a request method', async () => {
       expect.assertions(1);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
       const post = { id: '1', title: 'Love apollo' };
       fetchMock.get('/api/post/1', post);
@@ -2060,10 +2060,10 @@ describe('Query options', () => {
         query: postsQuery,
       };
 
-      const link1 = new RestLink({ uri: '/api' });
+      const link1 = new JsonApiLink({ uri: '/api' });
       await makePromise<Result>(execute(link1, operation));
 
-      const link2 = new RestLink({
+      const link2 = new JsonApiLink({
         uri: '/api',
         headers: {
           Accept: 'text/plain',
@@ -2094,7 +2094,7 @@ describe('Query options', () => {
       });
       const link = ApolloLink.from([
         headersMiddleware,
-        new RestLink({ uri: '/api' }),
+        new JsonApiLink({ uri: '/api' }),
       ]);
 
       const post = { id: '1', title: 'Love apollo' };
@@ -2124,7 +2124,7 @@ describe('Query options', () => {
       ]);
     });
     it('adds headers to the request from the setup', async () => {
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
         headers: { authorization: '1234' },
       });
@@ -2179,7 +2179,7 @@ describe('Query options', () => {
       });
       const link = ApolloLink.from([
         headersMiddleware,
-        new RestLink({
+        new JsonApiLink({
           uri: '/api',
           headers: { authorization: 'no user', setup: 'setup' },
         }),
@@ -2218,7 +2218,7 @@ describe('Query options', () => {
 
       const headersMiddleware = new ApolloLink((operation, forward) => {
         /** This Merge Policy preserves the setup headers over the context headers */
-        const headersMergePolicy: RestLink.HeadersMergePolicy = (
+        const headersMergePolicy: JsonApiLink.HeadersMergePolicy = (
           ...headerGroups: Headers[]
         ) => {
           return headerGroups.reduce((accumulator, current) => {
@@ -2242,7 +2242,7 @@ describe('Query options', () => {
       });
       const link = ApolloLink.from([
         headersMiddleware,
-        new RestLink({
+        new JsonApiLink({
           uri: '/api',
           headers: { authorization: 'initial setup', setup: 'setup' },
         }),
@@ -2294,7 +2294,7 @@ describe('Query options', () => {
       });
       const link = ApolloLink.from([
         headersMiddleware,
-        new RestLink({
+        new JsonApiLink({
           uri: '/api',
           headers: { authorization: 'initial setup' },
         }),
@@ -2344,7 +2344,7 @@ describe('Query options', () => {
       });
       const link = ApolloLink.from([
         headersMiddleware,
-        new RestLink({ uri: '/api', headers: undefined }),
+        new JsonApiLink({ uri: '/api', headers: undefined }),
       ]);
 
       const post = { id: '1', title: 'Love apollo' };
@@ -2383,7 +2383,7 @@ describe('Mutation', () => {
     it('supports POST requests', async () => {
       expect.assertions(2);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
       // the id in this hash simulates the server *assigning* an id for the new post
       const post = { id: '1', title: 'Love apollo' };
@@ -2420,7 +2420,7 @@ describe('Mutation', () => {
     it('supports PUT requests', async () => {
       expect.assertions(2);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
       // the id in this hash simulates the server *assigning* an id for the new post
       const post = { id: '1', title: 'Love apollo' };
@@ -2458,7 +2458,7 @@ describe('Mutation', () => {
     it('supports PATCH requests', async () => {
       expect.assertions(2);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
       // the id in this hash simulates the server *assigning* an id for the new post
       const post = { id: '1', title: 'Love apollo', categoryId: 6 };
@@ -2498,7 +2498,7 @@ describe('Mutation', () => {
     it('supports DELETE requests', async () => {
       expect.assertions(1);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
       // the id in this hash simulates the server *assigning* an id for the new post
       const post = { id: '1', title: 'Love apollo' };
@@ -2537,7 +2537,7 @@ describe('Mutation', () => {
       // used in the tests already returns {} from res.json() for 204 responses
       expect.assertions(1);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
       const post = { id: '1', title: 'Love apollo' };
       fetchMock.post('/api/posts', {
@@ -2578,7 +2578,7 @@ describe('Mutation', () => {
       // to provide body data and ensure the zero length still triggers the empty response
       expect.assertions(1);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
       const post = { id: '1', title: 'Love apollo' };
 
       fetchMock.post('/api/posts', {
@@ -2618,7 +2618,7 @@ describe('Mutation', () => {
     it('returns an error on unsuccessful posts with zero Content-Length', async () => {
       expect.assertions(1);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
       fetchMock.post('/api/posts', {
         headers: { 'Content-Length': 0 },
@@ -2657,7 +2657,7 @@ describe('Mutation', () => {
   it('returns an error on zero Content-Length but status > 300', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const post = { id: '1', title: 'Love apollo' };
     fetchMock.post('/api/posts', {
@@ -2699,7 +2699,7 @@ describe('Mutation', () => {
     it('corrects names to snake_case for link-level denormalizer', async () => {
       expect.assertions(3);
 
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
         fieldNameNormalizer: camelCase,
         fieldNameDenormalizer: snake_case,
@@ -2751,7 +2751,7 @@ describe('Mutation', () => {
     it('corrects names to snake_case for request-level denormalizer', async () => {
       expect.assertions(3);
 
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
         fieldNameNormalizer: camelCase,
       });
@@ -2812,7 +2812,7 @@ describe('Mutation', () => {
     it("if using the regular JSON bodyBuilder it doesn't stack multiple content-type headers", async () => {
       const CUSTOM_JSON_CONTENT_TYPE = 'my-custom-json-ish-content-type';
 
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
         headers: { 'Content-Type': CUSTOM_JSON_CONTENT_TYPE },
       });
@@ -2864,7 +2864,7 @@ describe('Mutation', () => {
       // see: https://github.com/apollographql/apollo-link-rest/issues/45
       expect.assertions(3);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
       //body containing Primitives, Objects and Arrays types
       const post = {
@@ -2918,7 +2918,7 @@ describe('Mutation', () => {
     it('respects bodyKey for mutations', async () => {
       expect.assertions(2);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
       // the id in this hash simulates the server *assigning* an id for the new post
       const post = { id: '1', title: 'Love apollo' };
@@ -2962,7 +2962,7 @@ describe('Mutation', () => {
     it('respects bodyBuilder for mutations', async () => {
       expect.assertions(2);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
       // the id in this hash simulates the server *assigning* an id for the new post
       const post = { id: '1', title: 'Love apollo' };
@@ -2990,7 +2990,7 @@ describe('Mutation', () => {
           }
         }
       `;
-      function fakeEncryption({ args }: RestLink.RestLinkHelperProps) {
+      function fakeEncryption({ args }: JsonApiLink.JsonApiLinkHelperProps) {
         return 'MAGIC_PREFIX' + JSON.stringify(args.input);
       }
 
@@ -3024,7 +3024,7 @@ describe('Mutation', () => {
     it('builds a request body for query operations', async () => {
       expect.assertions(3);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
       const post = { id: '1', title: 'This does not feel very RESTful.' };
       const resultPost = { __typename: 'Post', ...post };
       fetchMock.post('/api/post-to-get-post', post);
@@ -3058,7 +3058,7 @@ describe('Mutation', () => {
     it('throws when no body input is provided for HTTP methods other than GET or DELETE', async () => {
       expect.assertions(1);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
       const createPostMutation = gql`
         mutation createPost {
@@ -3094,7 +3094,7 @@ describe('Mutation', () => {
     it('defaults to json serialization for objects', async () => {
       expect.assertions(2);
 
-      const link = new RestLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
       //body containing Primitives, Objects and Arrays types
       const post = {
@@ -3152,7 +3152,7 @@ describe('Mutation', () => {
         headers: { 'Content-Type': 'text/plain' },
       });
 
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
         bodySerializers: {
           const: constSerializer,
@@ -3227,7 +3227,7 @@ describe('Mutation', () => {
       // A custom serializer that always returns the same value
       const constSerializer = (_, headers) => ({ body: 42, headers });
 
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
         bodySerializers: {
           fake: (data, headers) => ({
@@ -3313,7 +3313,7 @@ describe('Mutation', () => {
 
     it('returns the original object if the body serializers have a File or FileList object', async () => {
       expect.assertions(3);
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
         bodySerializers: {
           upFiles: (body, headers) => ({
@@ -3410,7 +3410,7 @@ describe('Mutation', () => {
 
     it('throws if there is no custom serializer defined', () => {
       expect.assertions(1);
-      const link = new RestLink({
+      const link = new JsonApiLink({
         uri: '/api',
       });
 
@@ -3439,7 +3439,7 @@ describe('Mutation', () => {
       ).catch(e =>
         expect(e).toEqual(
           new Error(
-            '"bodySerializer" must correspond to configured serializer. Please make sure to specify a serializer called missing in the "bodySerializers" property of the RestLink.',
+            '"bodySerializer" must correspond to configured serializer. Please make sure to specify a serializer called missing in the "bodySerializers" property of the JsonApiLink.',
           ),
         ),
       );
@@ -3473,7 +3473,7 @@ describe('export directive', () => {
   it('should throw an error if export is missing', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const post = { id: '1', title: 'Love apollo', tagId: 6 };
     fetchMock.get('/api/post/1', post);
@@ -3510,7 +3510,7 @@ describe('export directive', () => {
   it('can use a variable from export', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const post = { id: '1', title: 'Love apollo', tagId: 6 };
     fetchMock.get('/api/post/1', post);
@@ -3543,7 +3543,7 @@ describe('export directive', () => {
   it('can use two variables from export', async () => {
     expect.assertions(2);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const post = { id: '1', title: 'Love apollo', tagId: 6, postAuthor: 10 };
     fetchMock.get('/api/post/1', post);
@@ -3583,7 +3583,7 @@ describe('export directive', () => {
   it('can handle nested exports with deeply structured response data', async () => {
     expect.assertions(3);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const user = {
       id: 'user-a',
@@ -3674,7 +3674,7 @@ describe('Apollo client integration', () => {
   it('can integrate with apollo client', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const post = { id: '1', title: 'Love apollo' };
     fetchMock.get('/api/post/1', post);
@@ -3703,7 +3703,7 @@ describe('Apollo client integration', () => {
   it('has an undefined body on GET requests', async () => {
     expect.assertions(1);
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const post = { id: '1', title: 'Love apollo' };
     fetchMock.get('/api/post/1', post);
@@ -3732,7 +3732,7 @@ describe('Apollo client integration', () => {
   it('treats absent response fields as optional', async done => {
     // Discovered in: https://github.com/apollographql/apollo-link-rest/issues/74
 
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const post = {
       id: '1',
@@ -3785,13 +3785,13 @@ describe('Apollo client integration', () => {
       ).toBeTruthy();
     });
     const combinedLink = ApolloLink.from([
-      new RestLink({
+      new JsonApiLink({
         uri: '/api',
         typePatcher: {
           Post: (
             data: any,
             outerType: string,
-            patchDeeper: RestLink.FunctionalTypePatcher,
+            patchDeeper: JsonApiLink.FunctionalTypePatcher,
           ): any => {
             // Let's make unfairCriticism a Required Field
             if (data.unfairCriticism == null) {
@@ -3824,7 +3824,7 @@ describe('Apollo client integration', () => {
   });
 
   it('can catch HTTP Status errors', async done => {
-    const link = new RestLink({ uri: '/api' });
+    const link = new JsonApiLink({ uri: '/api' });
 
     const status = 403;
 
@@ -3833,7 +3833,7 @@ describe('Apollo client integration', () => {
       const { networkError } = opts;
       if (networkError != null) {
         //console.debug(`[Network error]: ${networkError}`);
-        const { statusCode } = networkError as RestLink.ServerError;
+        const { statusCode } = networkError as JsonApiLink.ServerError;
         expect(statusCode).toEqual(status);
       }
     });
@@ -3871,7 +3871,7 @@ describe('Apollo client integration', () => {
         reject(new AbortError('AbortError'));
       });
 
-    const link = new RestLink({
+    const link = new JsonApiLink({
       uri: '/api',
       customFetch: customFetch as any,
     });
@@ -3901,7 +3901,7 @@ describe('Playing nice with others', () => {
   });
 
   function buildLinks() {
-    const restLink = new RestLink({ uri: '/api' });
+    const restLink = new JsonApiLink({ uri: '/api' });
     const httpLink = new HttpLink({ uri: '/graphql' });
     const clientLink = withClientState({
       cache: new InMemoryCache(),

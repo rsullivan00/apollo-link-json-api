@@ -1,7 +1,7 @@
 {
-  "name": "apollo-link-rest",
+  "name": "apollo-link-json-api",
   "version": "0.7.3",
-  "description": "Query existing REST services with GraphQL",
+  "description": "Query JSON API compliant services with GraphQL",
   "license": "MIT",
   "main": "./lib/bundle.umd.js",
   "module": "./lib/index.js",
@@ -9,12 +9,12 @@
   "typings": "./lib/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/apollographql/apollo-link-rest.git"
+    "url": "git+https://github.com/rsullivan00/apollo-link-json-api.git"
   },
   "bugs": {
-    "url": "https://github.com/apollographql/apollo-link-rest/issues"
+    "url": "https://github.com/rsullivan00/apollo-link-json-api/issues"
   },
-  "homepage": "https://github.com/apollographql/apollo-link-rest#readme",
+  "homepage": "https://github.com/rsullivan00/apollo-link-json-api#readme",
   "scripts": {
     "build:browser": "browserify ./lib/bundle.umd.js -o=./lib/bundle.js --i apollo-link --i graphql --i apollo-utilities && npm run minify:browser",
     "build": "tsc -p .",
@@ -93,7 +93,7 @@
   },
   "bundlesize": [
     {
-      "name": "apollo-link-rest",
+      "name": "apollo-link-json-api",
       "path": "./lib/bundle.min.js",
       "maxSize": "9.5 kb"
     }

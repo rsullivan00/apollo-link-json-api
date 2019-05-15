@@ -18,7 +18,7 @@ export default {
     file: 'lib/bundle.umd.js',
     format: 'umd',
     exports: 'named',
-    name: 'apollo-link-rest',
+    name: 'apollo-link-json-api',
 
     globals,
     sourcemap: true,
