@@ -201,6 +201,7 @@ describe('Configuration', async () => {
       expect(data.post.tags[0].name).toBeDefined();
       expect(data.post.tags[0].tagDescription).toEqual('once');
     });
+
     it.skip('should preserve __typename when using fieldNameNormalizer', async () => {
       expect.assertions(2);
       const link = new JsonApiLink({
@@ -313,205 +314,21 @@ describe('Configuration', async () => {
   });
 });
 
-describe('Complex responses need nested __typename insertions', () => {
-  it.skip('can configure typename by providing a custom type-patcher table', async () => {
-    expect.assertions(1);
-
-    const patchIfExists = (
-      data: any,
-      key: string,
-      __typename: string,
-      patcher: JsonApiLink.FunctionalTypePatcher,
-    ) => {
-      const value = data[key];
-      if (value == null) {
-        return {};
-      }
-      const result = { [key]: patcher(value, __typename, patcher) };
-      return result;
-    };
-    const typePatcher: JsonApiLink.TypePatcherTable = {
-      Outer: (
-        obj: any,
-        outerType: string,
-        patchDeeper: JsonApiLink.FunctionalTypePatcher,
-      ) => {
-        if (obj == null) {
-          return obj;
-        }
-
-        return {
-          ...obj,
-          ...patchIfExists(obj, 'inner1', 'Inner1', patchDeeper),
-          ...patchIfExists(
-            obj,
-            'simpleDoubleNesting',
-            'SimpleDoubleNesting',
-            patchDeeper,
-          ),
-          ...patchIfExists(obj, 'nestedArrays', 'NestedArrays', patchDeeper),
-        };
-      },
-      Inner1: (
-        obj: any,
-        outerType: string,
-        patchDeeper: JsonApiLink.FunctionalTypePatcher,
-      ) => {
-        if (obj == null) {
-          return obj;
-        }
-        return {
-          ...obj,
-          ...patchIfExists(obj, 'reused', 'Reused', patchDeeper),
-        };
-      },
-      SimpleDoubleNesting: (
-        obj: any,
-        outerType: string,
-        patchDeeper: JsonApiLink.FunctionalTypePatcher,
-      ) => {
-        if (obj == null) {
-          return obj;
-        }
-
-        return {
-          ...obj,
-          ...patchIfExists(obj, 'inner1', 'Inner1', patchDeeper),
-        };
-      },
-      NestedArrays: (
-        obj: any,
-        outerType: string,
-        patchDeeper: JsonApiLink.FunctionalTypePatcher,
-      ) => {
-        if (obj == null) {
-          return obj;
-        }
-
-        return {
-          ...obj,
-          ...patchIfExists(
-            obj,
-            'singlyArray',
-            'SinglyNestedArrayEntry',
-            patchDeeper,
-          ),
-          ...patchIfExists(
-            obj,
-            'doublyNestedArray',
-            'DoublyNestedArrayEntry',
-            patchDeeper,
-          ),
-        };
-      },
-    };
-
-    const link = new JsonApiLink({ uri: '/api', typePatcher });
-    const root = {
-      id: '1',
-      inner1: { data: 'outer.inner1', reused: { id: 1 } },
-      simpleDoubleNesting: {
-        data: 'dd',
-        inner1: { data: 'outer.SDN.inner1', reused: { id: 2 } },
-      },
-      nestedArrays: {
-        unrelatedArray: ['string', 10],
-        singlyArray: [{ data: 'entry!' }],
-        doublyNestedArray: [[{ data: 'inception.entry!' }]],
-      },
-    };
-    const rootTyped = {
-      __typename: 'Outer',
-      id: '1',
-      inner1: {
-        __typename: 'Inner1',
-        data: 'outer.inner1',
-        reused: { __typename: 'Reused', id: 1 },
-      },
-      simpleDoubleNesting: {
-        __typename: 'SimpleDoubleNesting',
-        data: 'dd',
-        inner1: {
-          __typename: 'Inner1',
-          data: 'outer.SDN.inner1',
-          reused: { __typename: 'Reused', id: 2 },
-        },
-      },
-      nestedArrays: {
-        __typename: 'NestedArrays',
-        unrelatedArray: ['string', 10],
-        singlyArray: [{ __typename: 'SinglyNestedArrayEntry', data: 'entry!' }],
-        doublyNestedArray: [
-          [
-            {
-              __typename: 'DoublyNestedArrayEntry',
-              data: 'inception.entry!',
-            },
-          ],
-        ],
-      },
-    };
-
-    fetchMock.get('/api/outer/1', root);
-
-    const someQuery = gql`
-      query someQuery {
-        outer @jsonapi(path: "/outer/1") {
-          id
-          inner1 {
-            data
-            reused {
-              id
-            }
-          }
-          simpleDoubleNesting {
-            data
-            inner1 {
-              data
-              reused {
-                id
-              }
-            }
-          }
-          nestedArrays {
-            unrelatedArray
-            singlyArray {
-              data
-            }
-            doublyNestedArray {
-              data
-            }
-          }
-        }
-      }
-    `;
-
-    const { data } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'someOperation',
-        query: someQuery,
-      }),
-    );
-
-    expect(data).toMatchObject({
-      outer: rootTyped,
-    });
-  });
-});
-
 describe('Query single call', () => {
   afterEach(() => {
     fetchMock.restore();
   });
 
-  it.skip('can run a simple query', async () => {
+  it('can run a simple query', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
     const post = {
-      id: '1',
-      type: 'posts',
-      attributes: { title: 'Love apollo' },
+      data: {
+        id: '1',
+        type: 'posts',
+        attributes: { title: 'Love apollo' },
+      },
     };
     fetchMock.get('/api/post/1', post);
 
@@ -519,6 +336,7 @@ describe('Query single call', () => {
       query postTitle {
         post @jsonapi(path: "/post/1") {
           id
+          type
           title
         }
       }

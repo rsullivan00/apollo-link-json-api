@@ -485,18 +485,6 @@ const getEndpointOptions = (
   };
 };
 
-/** Replaces params in the path, keyed by colons */
-const replaceLegacyParam = (
-  endpoint: string,
-  name: string,
-  value: string,
-): string => {
-  if (value === undefined || name === undefined) {
-    return endpoint;
-  }
-  return endpoint.replace(`:${name}`, value);
-};
-
 /** Internal Tool that Parses Paths for JsonApiLink -- This API should be considered experimental */
 export class PathBuilder {
   /** For accelerating the replacement of paths that are used a lot */
@@ -925,41 +913,16 @@ const resolver: Resolver = async (
 
   if (neitherPathsProvided) {
     throw new Error(
-      `One of ("path" | "pathBuilder") must be set in the @rest() directive. This request had neither, please add one`,
+      `One of ("path" | "pathBuilder") must be set in the @jsonapi() directive. This request had neither, please add one`,
     );
   }
   if (!pathBuilder) {
-    if (!path.includes(':')) {
-      // Colons are the legacy route, and aren't uri encoded anyhow.
-      pathBuilder = PathBuilder.replacerForPath(path);
-    } else {
-      console.warn(
-        "Deprecated: '@rest(path:' contains a ':' colon, this format will be removed in future versions",
+    if (path.includes(':')) {
+      throw new Error(
+        "'@jsonapi(path:' contains a ':' colon, this format is not supported",
       );
-
-      pathBuilder = ({
-        args,
-        exportVariables,
-      }: JsonApiLink.PathBuilderProps): string => {
-        const legacyArgs = {
-          ...args,
-          ...exportVariables,
-        };
-        const pathWithParams = Object.keys(legacyArgs).reduce(
-          (acc, e) => replaceLegacyParam(acc, e, legacyArgs[e]),
-          path,
-        );
-        if (pathWithParams.includes(':')) {
-          throw new Error(
-            'Missing parameters to run query, specify it in the query params or use ' +
-              'an export directive. (If you need to use ":" inside a variable string' +
-              ' make sure to encode the variables properly using `encodeURIComponent' +
-              '`. Alternatively see documentation about using pathBuilder.)',
-          );
-        }
-        return pathWithParams;
-      };
     }
+    pathBuilder = PathBuilder.replacerForPath(path);
   }
   const allParams: JsonApiLink.PathBuilderProps = {
     args,
@@ -1256,8 +1219,8 @@ export class JsonApiLink extends ApolloLink {
   ): Observable<FetchResult> | null {
     const { query, variables, getContext, setContext } = operation;
     const context: LinkChainContext | any = getContext() as any;
-    const isRestQuery = hasDirectives(['rest'], query);
-    if (!isRestQuery) {
+    const isJsonApiQuery = hasDirectives(['jsonapi'], query);
+    if (!isJsonApiQuery) {
       return forward(operation);
     }
 
