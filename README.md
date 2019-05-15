@@ -1,4 +1,4 @@
-# JSON API Link
+# JSON API Link [![Build Status](https://travis-ci.com/Rsullivan00/apollo-link-json-api.svg?branch=master)](https://travis-ci.com/Rsullivan00/apollo-link-json-api)
 
 ## Purpose
 
