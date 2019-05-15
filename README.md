@@ -51,7 +51,7 @@ client.query({ query }).then(response => {
 
 ## Options
 
-REST Link takes an object with some options on it to customize the behavior of the link. The options you can pass are outlined below:
+JSON API Link takes an object with some options on it to customize the behavior of the link. The options you can pass are outlined below:
 
 - `uri`: the URI key is a string endpoint (optional when `endpoints` provides a default)
 - `endpoints`: root endpoint (uri) to apply paths to or a map of endpoints
