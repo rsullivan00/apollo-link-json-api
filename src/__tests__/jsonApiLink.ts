@@ -393,43 +393,21 @@ describe('Query single call', () => {
     expect(data.post.content).toBeUndefined();
   });
 
-  it.skip('can pass param to a query without a variable', async () => {
-    expect.assertions(1);
-
-    const link = new JsonApiLink({ uri: '/api' });
-    const post = { id: '1', title: 'Love apollo' };
-    fetchMock.get('/api/post/1', post);
-
-    const postTitleQuery = gql`
-      query postTitle {
-        post @jsonapi(type: "Post", path: "/post/1") {
-          id
-          title
-        }
-      }
-    `;
-
-    const { data } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'postTitle',
-        query: postTitleQuery,
-      }),
-    );
-
-    expect(data).toMatchObject({ post: { ...post, __typename: 'Post' } });
-  });
-
-  it.skip('can pass param to a query with a variable', async () => {
+  it('can pass param to a query with a variable', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
 
-    const post = { id: '1', title: 'Love apollo' };
-    fetchMock.get('/api/post/1', post);
+    const post = {
+      id: '1',
+      type: 'posts',
+      attributes: { title: 'Love apollo' },
+    };
+    fetchMock.get('/api/post/1', { data: post });
 
     const postTitleQuery = gql`
       query postTitle {
-        post(id: $id) @jsonapi(type: "Post", path: "/post/:id") {
+        post(id: $id) @jsonapi(path: "/post/{args.id}") {
           id
           title
         }
@@ -444,7 +422,7 @@ describe('Query single call', () => {
       }),
     );
 
-    expect(data.post.title).toBe(post.title);
+    expect(data.post.title).toBe(post.attributes.title);
   });
 
   it.skip('can pass param with `0` value to a query with a variable', async () => {
