@@ -56,7 +56,7 @@ describe('Configuration', async () => {
       fetchMock.restore();
     });
 
-    it.skip('throws without any config', () => {
+    it('throws without any config', () => {
       expect.assertions(3);
 
       expect(() => {
@@ -70,23 +70,25 @@ describe('Configuration', async () => {
       }).toThrow();
     });
 
-    it.skip('throws with mismatched config', () => {
+    it('throws with mismatched config', () => {
       expect.assertions(1);
       expect(() => {
         new JsonApiLink({ uri: '/correct', endpoints: { '': '/mismatched' } });
       }).toThrow();
     });
 
-    it.skip('throws if missing both path and pathBuilder', async () => {
+    it('throws if missing both path and pathBuilder', async () => {
       expect.assertions(1);
 
       const link = new JsonApiLink({ uri: '/api' });
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
       const postTitleQuery = gql`
         query postTitle {
-          post @jsonapi() {
+          post @jsonapi(placeholder: "placeholder") {
             id
             title
           }
@@ -107,7 +109,7 @@ describe('Configuration', async () => {
       }
     });
 
-    it.skip("Doesn't throw on good configs", () => {
+    it("Doesn't throw on good configs", () => {
       expect.assertions(1);
 
       new JsonApiLink({ uri: '/correct' });
@@ -126,7 +128,7 @@ describe('Configuration', async () => {
     afterEach(() => {
       fetchMock.restore();
     });
-    it.skip('should apply fieldNameNormalizer if specified', async () => {
+    it('should apply fieldNameNormalizer if specified', async () => {
       expect.assertions(3);
       const link = new JsonApiLink({
         uri: '/api',
@@ -134,13 +136,25 @@ describe('Configuration', async () => {
       });
       // "Server" returns TitleCased and snake_cased fields
       // fieldNameNormalizer changes them to camelCase
-      const post = { id: '1', Title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { Title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
-      const tags = [
-        { Name: 'apollo', tag_description: 'once' },
-        { Name: 'graphql', tag_description: 'twice' },
-      ];
+      const tags = {
+        data: [
+          {
+            type: 'tags',
+            id: '1',
+            attributes: { Name: 'apollo', tag_description: 'once' },
+          },
+          {
+            type: 'tags',
+            id: '2',
+            attributes: { Name: 'graphql', tag_description: 'twice' },
+          },
+        ],
+      };
       fetchMock.get('/api/tags', tags);
 
       const postAndTags = gql`
@@ -168,16 +182,23 @@ describe('Configuration', async () => {
       expect(data.post.tags[0].tagDescription).toEqual('once');
     });
 
-    it.skip('should preserve __typename when using fieldNameNormalizer', async () => {
+    it('should preserve __typename when using fieldNameNormalizer', async () => {
       expect.assertions(2);
       const link = new JsonApiLink({
         uri: '/api',
         fieldNameNormalizer: camelCase,
       });
-      const post = { id: '1', Title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { Title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
-      const tags = [{ Name: 'apollo' }, { Name: 'graphql' }];
+      const tags = {
+        data: [
+          { type: 'tags', id: '1', attributes: { Name: 'apollo' } },
+          { type: 'tags', id: '2', attributes: { Name: 'graphql' } },
+        ],
+      };
       fetchMock.get('/api/tags', tags);
 
       const postAndTags = gql`
@@ -201,7 +222,7 @@ describe('Configuration', async () => {
       );
 
       expect(data.post.__typename).toBeDefined();
-      expect(data.post.__typename).toEqual('Post');
+      expect(data.post.__typename).toEqual('Posts');
     });
   });
 
@@ -209,7 +230,7 @@ describe('Configuration', async () => {
     afterEach(() => {
       fetchMock.restore();
     });
-    it.skip('should apply customFetch if specified', async () => {
+    it('should apply customFetch if specified', async () => {
       expect.assertions(1);
 
       const link = new JsonApiLink({
@@ -217,9 +238,11 @@ describe('Configuration', async () => {
         customFetch: (uri, options) =>
           new Promise((resolve, reject) => {
             const body = JSON.stringify({
-              type: 'posts',
-              id: '1',
-              attributes: { title: 'custom' },
+              data: {
+                type: 'posts',
+                id: '1',
+                attributes: { title: 'custom' },
+              },
             });
             resolve(new Response(body));
           }),
@@ -245,7 +268,7 @@ describe('Configuration', async () => {
   });
 
   describe('Default endpoint', () => {
-    it.skip('should produce a warning if not specified', async () => {
+    it('should produce a warning if not specified', async () => {
       let warning = '';
       const warn = message => (warning = message);
 
@@ -262,7 +285,7 @@ describe('Configuration', async () => {
       );
     });
 
-    it.skip('should not produce a warning when specified', async () => {
+    it('should not produce a warning when specified', async () => {
       let warning = '';
       const warn = message => (warning = message);
 
