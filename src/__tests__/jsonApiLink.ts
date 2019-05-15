@@ -830,7 +830,7 @@ describe('Query multiple calls', () => {
     expect(data.tags).toBeDefined();
   });
 
-  it('can run a subquery with multiple rest calls', async () => {
+  it('can run a subquery with multiple jsonapi calls', async () => {
     expect.assertions(2);
 
     const link = new JsonApiLink({ uri: '/api' });
@@ -871,7 +871,7 @@ describe('Query multiple calls', () => {
     expect(data.post.tags).toBeDefined();
   });
 
-  it('can return a partial result if one out of multiple rest calls fail', async () => {
+  it('can return a partial result if one out of multiple jsonapi calls fail', async () => {
     expect.assertions(2);
 
     const link = new JsonApiLink({ uri: '/api' });
