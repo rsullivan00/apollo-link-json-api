@@ -104,6 +104,56 @@ const query = gql`
 `;
 ```
 
+### Mutations
+
+```js
+import React from 'react'
+import gql from 'graphql-tag'
+import { Mutation } from 'react-apollo'
+
+export const UPDATE_BOOK_TITLE = gql`
+  mutation UpdateBookTitle($input: UpdateBookTitleInput!) {
+    book(input: $input) @jsonapi(path: "/books/{args.input.data.id}", method: "PATCH") {
+      title
+    }
+  }
+`
+
+const UpdateBookTitleButton = ({ videoId, children }) => (
+  <Mutation
+    mutation={UPDATE_BOOK_TITLE}
+    update={(store, { data: { book } }) => {
+      // Update your Apollo cache with result
+      console.log(book.title)
+    }}
+  >
+    {mutate => (
+      <button onClick={() => 
+        mutate({
+          variables: {
+            input: {
+              data: {
+                id: bookId,
+                type: 'books',
+                attributes: { title: 'Changed title!' }
+              }
+            }
+          },
+          optimisticResponse: {
+            book: {
+              __typename: 'Books',
+              title: 'Changed title!'
+            }
+          }
+        })
+        }>
+        Update your book title!
+        </button>
+    )}
+  </Mutation>
+)
+```
+
 ## Options
 
 JSON API Link takes an object with some options on it to customize the behavior of the link. The options you can pass are outlined below:
