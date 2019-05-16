@@ -1,6 +1,6 @@
 {
   "name": "apollo-link-json-api",
-  "version": "0.7.3",
+  "version": "0.0.1",
   "description": "Query JSON API compliant services with GraphQL",
   "license": "MIT",
   "main": "./lib/bundle.umd.js",
