@@ -1,6 +1,6 @@
 {
   "name": "apollo-link-json-api",
-  "version": "0.7.3",
+  "version": "0.0.1",
   "description": "Query JSON API compliant services with GraphQL",
   "license": "MIT",
   "main": "./lib/bundle.umd.js",
@@ -23,9 +23,6 @@
     "coverage:upload": "codecov",
     "danger": "danger run --verbose",
     "deploy": "./scripts/deploy.sh",
-    "docs:check": "./scripts/docs_check.sh",
-    "docs:pull": "./scripts/docs_pull.sh",
-    "docs:push": "./scripts/docs_push.sh",
     "filesize": "npm run build && npm run build:browser && bundlesize",
     "lint": "prettier --write 'src/**/*.{j,t}s*'",
     "lint-staged": "lint-staged",

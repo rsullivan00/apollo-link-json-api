@@ -10,6 +10,8 @@ const globals = {
   'apollo-utilities': 'apollo.utilities',
   'graphql-anywhere': 'graphqlAnywhere',
   'graphql-anywhere/lib/async': 'graphqlAnywhere.async',
+  humps: 'humps',
+  qa: 'qs',
 };
 
 export default {
