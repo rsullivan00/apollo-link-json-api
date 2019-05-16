@@ -239,10 +239,6 @@ export namespace JsonApiLink {
      * @default Uses JsonApiLink.fieldNameDenormalizer
      */
     fieldNameDenormalizer?: JsonApiLink.FieldNameNormalizer;
-    /**
-     * A method to allow insertion of __typename deep in response objects
-     */
-    typePatcher?: JsonApiLink.FunctionalTypePatcher;
   }
 }
 
@@ -264,8 +260,6 @@ const addTypeNameToResult = (
   __typename: string,
   typePatcher: JsonApiLink.FunctionalTypePatcher,
 ): any[] | object => {
-  console.log('In addTypeNameToResult');
-  console.log(result);
   if (Array.isArray(result)) {
     let fixedTypename;
     try {
@@ -277,8 +271,6 @@ const addTypeNameToResult = (
     const mappedResult = result.map(e =>
       addTypeNameToResult(e, fixedTypename, typePatcher),
     );
-    console.log('result', result);
-    console.log('mappedResult', mappedResult);
     return mappedResult;
   }
   if (
@@ -1089,7 +1081,6 @@ export class JsonApiLink extends ApolloLink {
 
     if (typePatcher == null) {
       this.typePatcher = (result, __typename, _2) => {
-        console.log(`Type patching ${__typename} into ${result.__typename}`);
         return { __typename, ...result };
       };
     } else if (

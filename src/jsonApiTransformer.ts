@@ -1,7 +1,37 @@
 import { pascalize } from 'humps';
 import { mapObject } from './utils';
 
-const typenameResource = resource => ({
+interface ResourceIdentifier {
+  id: string;
+  type: string;
+}
+
+type RelationshipData = ResourceIdentifier | Array<ResourceIdentifier>;
+
+interface RelationshipInfo {
+  links: object;
+  data?: RelationshipData;
+}
+
+interface Relationships {
+  [relationshipName: string]: RelationshipInfo;
+}
+
+interface Resource {
+  id: string;
+  type: string;
+  links: object;
+  attributes: object;
+  relationships?: Relationships;
+  __relationships_denormalizing?: boolean;
+}
+
+interface JsonApiBody {
+  data: Resource | Array<Resource>;
+  included?: Array<Resource> | undefined;
+}
+
+const typenameResource = (resource: Resource) => ({
   __typename: pascalize(resource.type),
   ...resource,
 });
@@ -11,7 +41,7 @@ const flattenResource = ({
   relationships,
   links,
   ...restResource
-}) => {
+}: Resource) => {
   if (!relationships) {
     return {
       ...restResource,
@@ -34,16 +64,26 @@ const flattenResource = ({
   };
 };
 
-const findResource = ({ id, type }, resources) =>
-  resources.find(
+const findResource = (
+  { id, type }: ResourceIdentifier,
+  resources: Array<Resource>,
+) => {
+  const result = resources.find(
     ({ id: resourceId, type: resourceType }) =>
       id === resourceId && type === resourceType,
   );
+  return result;
+};
 
-const denormalizeRelationships = (data, rest) => {
-  if (!rest.included || !data.relationships) {
+const _denormalizeRelationships = (
+  data: Resource,
+  allResources: Array<Resource>,
+) => {
+  if (!data || !data.relationships || data.__relationships_denormalizing) {
     return data;
   }
+  data.__relationships_denormalizing = true;
+
   const relationships = mapObject(
     data.relationships,
     ([relationshipName, related]) => {
@@ -54,15 +94,18 @@ const denormalizeRelationships = (data, rest) => {
         return [
           relationshipName,
           related.data.map(item =>
-            denormalizeRelationships(findResource(item, rest.included), rest),
+            _denormalizeRelationships(
+              findResource(item, allResources),
+              allResources,
+            ),
           ),
         ];
       }
       return [
         relationshipName,
-        denormalizeRelationships(
-          findResource(related.data, rest.included),
-          rest,
+        _denormalizeRelationships(
+          findResource(related.data, allResources),
+          allResources,
         ),
       ];
     },
@@ -70,30 +113,34 @@ const denormalizeRelationships = (data, rest) => {
   return { ...data, relationships };
 };
 
-const typenameIncludedResources = ({ included, ...rest }) => {
+const denormalizeRelationships = (data: Resource, { included }) => {
   if (!included) {
-    return rest;
+    return data;
   }
-  return { ...rest, included: included.map(typenameResource) };
+  return _denormalizeRelationships(data, [data, ...included]);
 };
 
-const applyToData = fn => ({ data, ...rest }) => {
+const applyToData = fn => ({ data, ...rest }: JsonApiBody) => {
   if (Array.isArray(data)) {
     return { data: data.map(obj => fn(obj, rest)), ...rest };
   }
   return { data: fn(data, rest), ...rest };
 };
 
-const jsonapiResponseTransformer = async response =>
+const applyToIncluded = fn => ({ included, ...rest }: JsonApiBody) => {
+  if (!included) {
+    return rest;
+  }
+  return { included: included.map(obj => fn(obj, rest)), ...rest };
+};
+
+const jsonapiResponseTransformer = async (response: Response) =>
   response
     .json()
-    .then(typenameIncludedResources)
+    .then(applyToIncluded(typenameResource))
     .then(applyToData(typenameResource))
     .then(applyToData(denormalizeRelationships))
     .then(applyToData(flattenResource))
-    .then(({ data, included }) => data)
-    // TODO Remove this debugging code
-    // .then(r => console.log(r) || r)
-    .catch(e => console.error(e));
+    .then(({ data, included }) => data);
 
 export default jsonapiResponseTransformer;
