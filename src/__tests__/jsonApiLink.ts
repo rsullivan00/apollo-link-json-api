@@ -2886,8 +2886,8 @@ describe('Apollo client integration', () => {
     expect(fetchMock.lastCall()[1].body).toBeUndefined();
   });
 
-  it('treats absent response fields as optional', async done => {
-    // Discovered in: https://github.com/apollographql/apollo-link-rest/issues/74
+  it('treats absent response fields as optional', async () => {
+    expect.assertions(2);
 
     const link = new JsonApiLink({ uri: '/api' });
 
@@ -2946,36 +2946,6 @@ describe('Apollo client integration', () => {
       query: postTitleQuery,
     });
     expect(data2.post.unfairCriticism).toBeNull();
-
-    const errorLink = onError(opts => {
-      console.error(opts);
-      const { networkError, graphQLErrors } = opts;
-      expect(
-        networkError || (graphQLErrors && graphQLErrors.length > 0),
-      ).toBeTruthy();
-    });
-    const combinedLink = ApolloLink.from([
-      new JsonApiLink({
-        uri: '/api',
-      }),
-      errorLink,
-    ]);
-    const client3 = new ApolloClient({
-      cache: new InMemoryCache(),
-      link: combinedLink,
-    });
-    try {
-      const result = await client3.query({
-        query: postTitleQuery,
-      });
-      const { errors } = result;
-      if (errors && errors.length > 0) {
-        throw new Error('All is well, errors were thrown as expected');
-      }
-      done.fail('query should throw some sort of error');
-    } catch (error) {
-      done();
-    }
   });
 
   it('can catch HTTP Status errors', async done => {
