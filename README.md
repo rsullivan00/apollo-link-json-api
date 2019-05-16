@@ -57,7 +57,6 @@ JSON API Link supports [unpacking related resources](https://jsonapi.org/format/
 into a friendlier GraphQL query structure.
 
 ```js
-// Do this
 const query = gql`
   query firstAuthor {
     author @jsonapi(path: "authors/1?include=series,series.books") {
