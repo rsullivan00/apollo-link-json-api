@@ -1164,18 +1164,19 @@ describe('Query options', () => {
   });
 
   describe('method', () => {
-    it.skip('works for GET requests', async () => {
+    it('works for GET requests', async () => {
       expect.assertions(1);
 
       const link = new JsonApiLink({ uri: '/api' });
 
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1")
-            @jsonapi(type: "Post", path: "/post/:id", method: "GET") {
+          post(id: "1") @jsonapi(path: "/post/{args.id}", method: "GET") {
             id
             title
           }
@@ -1196,17 +1197,19 @@ describe('Query options', () => {
       );
     });
 
-    it.skip('works without specifying a request method', async () => {
+    it('works without specifying a request method', async () => {
       expect.assertions(1);
 
       const link = new JsonApiLink({ uri: '/api' });
 
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(type: "Post", path: "/post/{args.id}") {
             id
             title
           }
