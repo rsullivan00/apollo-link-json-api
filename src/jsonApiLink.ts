@@ -284,11 +284,14 @@ const addTypeNameToResult = (
   return typePatcher(result, __typename, typePatcher);
 };
 
-const quickFindRestDirective = (field: FieldNode): DirectiveNode | null => {
+const quickFindJsonApiDirective = (
+  field: FieldNode,
+): DirectiveNode | undefined => {
   if (field.directives && field.directives.length) {
-    return field.directives.find(directive => 'rest' === directive.name.value);
+    return field.directives.find(
+      directive => 'jsonapi' === directive.name.value,
+    );
   }
-  return null;
 };
 /**
  * The way graphql works today, it doesn't hand us the AST tree for our query, it hands us the ROOT
@@ -338,7 +341,7 @@ function findRestDirectivesThenInsertNullsForOmittedFields(
       );
     } else if (isField(node)) {
       const name = resultKeyNameFromField(node);
-      if (name === resultKey && quickFindRestDirective(node) != null) {
+      if (name === resultKey && quickFindJsonApiDirective(node)) {
         // Jackpot! We found our selectionSet!
         insertNullsForAnyOmittedFields(
           current,
