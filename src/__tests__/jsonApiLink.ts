@@ -532,6 +532,72 @@ describe('Query single call', () => {
     });
   });
 
+  it('ignores relationship and data links', async () => {
+    expect.assertions(1);
+
+    const link = new JsonApiLink({ uri: '/api' });
+    const author = {
+      id: '1',
+      type: 'authors',
+      attributes: { name: 'George R. R. Martin' },
+      links: { self: '/authors/1' },
+    };
+    const bookWithRelated = {
+      id: '2',
+      type: 'books',
+      attributes: { title: 'A Game of Thrones' },
+      links: { self: '/books/2' },
+      relationships: {
+        author: {
+          data: { id: author.id, type: author.type },
+          links: {
+            self: '/books/2/relationships/author',
+            related: '/books/2/author',
+          },
+        },
+        series: {
+          links: {
+            self: '/books/2/relationships/series',
+            related: '/books/2/series',
+          },
+        },
+      },
+    };
+
+    fetchMock.get('/api/books/2?include=author', {
+      data: bookWithRelated,
+      included: [author],
+    });
+
+    const bookWithAuthorQuery = gql`
+      query bookWithAuthor {
+        book @jsonapi(path: "/books/2?include=author") {
+          id
+          title
+          author {
+            id
+            name
+          }
+        }
+      }
+    `;
+
+    const { data } = await makePromise<Result>(
+      execute(link, {
+        operationName: 'bookWithAuthor',
+        query: bookWithAuthorQuery,
+      }),
+    );
+
+    expect(data).toMatchObject({
+      book: {
+        id: bookWithRelated.id,
+        title: bookWithRelated.attributes.title,
+        author: { id: author.id, name: author.attributes.name },
+      },
+    });
+  });
+
   it('can query through deeply nested and looping relationships', async () => {
     expect.assertions(1);
 
