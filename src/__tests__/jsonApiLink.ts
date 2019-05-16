@@ -3121,6 +3121,7 @@ describe('Playing nice with others', () => {
     });
   });
 
+  // this relies on the removed export feature, leaving skipped for now
   it.skip('should work nested in apollo-link-http', async () => {
     fetchMock.get('/api/posts/1', [posts[0]]);
     fetchMock.get('/api/posts/2', [posts[1]]);
@@ -3163,8 +3164,8 @@ describe('Playing nice with others', () => {
     });
   });
 
-  it.skip('should forward errors from apollo-link-http', async () => {
-    fetchMock.get('/api/posts', posts);
+  it('should forward errors from apollo-link-http', async () => {
+    fetchMock.get('/api/posts', { data: posts });
     fetchMock.post('/graphql', authorErrors);
     const { jsonApiLink, httpLink } = buildLinks();
     const link = from([jsonApiLink, httpLink]);
@@ -3174,7 +3175,7 @@ describe('Playing nice with others', () => {
         authors {
           id
         }
-        people @jsonapi(type: "[Post]", path: "/posts") {
+        people @jsonapi(path: "/posts") {
           title
         }
       }
@@ -3186,8 +3187,8 @@ describe('Playing nice with others', () => {
 
     expect(combinedData).toEqual({
       people: [
-        { title: 'Love apollo', __typename: 'Post' },
-        { title: 'Respect apollo', __typename: 'Post' },
+        { title: 'Love apollo', __typename: 'Posts' },
+        { title: 'Respect apollo', __typename: 'Posts' },
       ],
     });
 
@@ -3196,8 +3197,8 @@ describe('Playing nice with others', () => {
     });
   });
 
-  it.skip('should work alongside apollo-link-state', async () => {
-    fetchMock.get('/api/posts', posts);
+  it('should work alongside apollo-link-state', async () => {
+    fetchMock.get('/api/posts', { data: posts });
     const { jsonApiLink, clientLink } = buildLinks();
     // TODO Investigate why this order can't be swapped because client seems to strip the __typename field.
     const link = from([jsonApiLink, clientLink]);
@@ -3207,7 +3208,7 @@ describe('Playing nice with others', () => {
         lastViewedAuthor @client {
           id
         }
-        posts @jsonapi(type: "[Post]", path: "/posts") {
+        posts @jsonapi(path: "/posts") {
           title
         }
       }
@@ -3218,8 +3219,8 @@ describe('Playing nice with others', () => {
     );
     expect(combinedData).toEqual({
       posts: [
-        { title: 'Love apollo', __typename: 'Post' },
-        { title: 'Respect apollo', __typename: 'Post' },
+        { title: 'Love apollo', __typename: 'Posts' },
+        { title: 'Respect apollo', __typename: 'Posts' },
       ],
       lastViewedAuthor: {
         id: 2,
@@ -3227,8 +3228,8 @@ describe('Playing nice with others', () => {
     });
   });
 
-  it.skip('should work nested in apollo-link-state', async () => {
-    fetchMock.get('/api/posts', posts);
+  it('should work nested in apollo-link-state', async () => {
+    fetchMock.get('/api/posts', { data: posts });
     const { jsonApiLink, clientLink } = buildLinks();
     // TODO Investigate why this order can't be swapped because client seems to strip the __typename field.
     const link = from([jsonApiLink, clientLink]);
@@ -3237,7 +3238,7 @@ describe('Playing nice with others', () => {
       query {
         lastViewedAuthor @client {
           id
-          people @jsonapi(type: "[Post]", path: "/posts") {
+          people @jsonapi(path: "/posts") {
             title
           }
         }
@@ -3251,13 +3252,14 @@ describe('Playing nice with others', () => {
       lastViewedAuthor: {
         id: 2,
         people: [
-          { title: 'Love apollo', __typename: 'Post' },
-          { title: 'Respect apollo', __typename: 'Post' },
+          { title: 'Love apollo', __typename: 'Posts' },
+          { title: 'Respect apollo', __typename: 'Posts' },
         ],
       },
     });
   });
 
+  // this relies on the removed exports feature
   it.skip('should work with several layers of nesting', async () => {
     fetchMock.get('/api/posts/1', [posts[0]]);
     fetchMock.get('/api/posts/2', [posts[1]]);
