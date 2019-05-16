@@ -239,10 +239,6 @@ export namespace JsonApiLink {
      * @default Uses JsonApiLink.fieldNameDenormalizer
      */
     fieldNameDenormalizer?: JsonApiLink.FieldNameNormalizer;
-    /**
-     * A method to allow insertion of __typename deep in response objects
-     */
-    typePatcher?: JsonApiLink.FunctionalTypePatcher;
   }
 }
 

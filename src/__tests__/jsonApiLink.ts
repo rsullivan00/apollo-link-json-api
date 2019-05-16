@@ -532,7 +532,7 @@ describe('Query single call', () => {
     });
   });
 
-  it('can query through nested and looping relationships', async () => {
+  it('can query through deeply nested and looping relationships', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
