@@ -1345,10 +1345,10 @@ describe('Query options', () => {
     it('sets the Accept: application/vnd.api+json header if not provided', async () => {
       expect.assertions(2);
 
-      fetchMock.get('/api/posts', []);
+      fetchMock.get('/api/posts', { data: [] });
       const postsQuery = gql`
         query posts {
-          posts @jsonapi(type: "Post", path: "/posts") {
+          posts @jsonapi(path: "/posts") {
             id
           }
         }
@@ -1397,13 +1397,15 @@ describe('Query options', () => {
       ]);
 
       const post = {
-        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+        type: 'posts',
+        id: '1',
+        attributes: { title: 'Love apollo' },
       };
-      fetchMock.get('/api/post/1', post);
+      fetchMock.get('/api/post/1', { data: post });
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @jsonapi(type: "Post", path: "/post/{args.id}") {
+          post(id: "1") @jsonapi(path: "/post/{args.id}") {
             id
             title
           }
