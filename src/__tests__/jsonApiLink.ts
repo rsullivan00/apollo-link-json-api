@@ -2802,7 +2802,7 @@ describe('Mutation', () => {
 
 describe('validateRequestMethodForOperationType', () => {
   describe('for operation type "mutation"', () => {
-    it.skip('throws because it is not supported yet', () => {
+    it('throws because it is not supported yet', () => {
       expect.assertions(1);
       expect(() =>
         validateRequestMethodForOperationType('GIBBERISH', 'mutation'),
@@ -2810,7 +2810,7 @@ describe('validateRequestMethodForOperationType', () => {
     });
   });
   describe('for operation type "subscription"', () => {
-    it.skip('throws because it is not supported yet', () => {
+    it('throws because it is not supported yet', () => {
       expect.assertions(1);
       expect(() =>
         validateRequestMethodForOperationType('GET', 'subscription'),
