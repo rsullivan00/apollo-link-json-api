@@ -3277,8 +3277,16 @@ describe('Playing nice with others', () => {
   }
 
   const posts = [
-    { title: 'Love apollo' },
-    { title: 'Respect apollo', meta: { creatorId: 1 } },
+    {
+      id: '1',
+      type: 'posts',
+      attributes: { title: 'Love apollo' },
+    },
+    {
+      id: '2',
+      type: 'posts',
+      attributes: { title: 'Respect apollo', meta: { creatorId: 1 } },
+    },
   ];
   const authors = { data: { authors: [{ id: 1 }, { id: 2 }, { id: 3 }] } };
   const authorErrors = {
@@ -3287,14 +3295,14 @@ describe('Playing nice with others', () => {
     },
   };
 
-  it.skip('should work alongside apollo-link-http', async () => {
-    fetchMock.get('/api/posts', posts);
+  it('should work alongside apollo-link-http', async () => {
+    fetchMock.get('/api/posts', { data: posts });
     fetchMock.post('/graphql', authors);
     const { restLink, httpLink } = buildLinks();
     const link = from([restLink, httpLink]);
     const restQuery = gql`
       query {
-        people @jsonapi(type: "[Post]", path: "/posts") {
+        posts @jsonapi(path: "/posts") {
           title
         }
       }
@@ -3311,7 +3319,7 @@ describe('Playing nice with others', () => {
         authors {
           id
         }
-        people @jsonapi(type: "[Post]", path: "/posts") {
+        people @jsonapi(path: "/posts") {
           title
         }
       }
@@ -3326,16 +3334,16 @@ describe('Playing nice with others', () => {
       execute(link, { operationName: 'combinedQuery', query: combinedQuery }),
     );
     expect(restData).toEqual({
-      people: [
-        { title: 'Love apollo', __typename: 'Post' },
-        { title: 'Respect apollo', __typename: 'Post' },
+      posts: [
+        { title: 'Love apollo', __typename: 'Posts' },
+        { title: 'Respect apollo', __typename: 'Posts' },
       ],
     });
     expect(httpData).toEqual({ authors: [{ id: 1 }, { id: 2 }, { id: 3 }] });
     expect(combinedData).toEqual({
       people: [
-        { title: 'Love apollo', __typename: 'Post' },
-        { title: 'Respect apollo', __typename: 'Post' },
+        { title: 'Love apollo', __typename: 'Posts' },
+        { title: 'Respect apollo', __typename: 'Posts' },
       ],
       authors: [{ id: 1 }, { id: 2 }, { id: 3 }],
     });
