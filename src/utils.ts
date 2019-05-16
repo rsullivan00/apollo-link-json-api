@@ -6,7 +6,7 @@ import { DocumentNode, DirectiveNode } from 'graphql';
 import { checkDocument, removeDirectivesFromDocument } from 'apollo-utilities';
 
 const connectionRemoveConfig = {
-  test: (directive: DirectiveNode) => directive.name.value === 'rest',
+  test: (directive: DirectiveNode) => directive.name.value === 'jsonapi',
   remove: true,
 };
 
