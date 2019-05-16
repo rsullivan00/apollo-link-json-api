@@ -6,8 +6,7 @@ import { onError } from 'apollo-link-error';
 import gql, { disableFragmentWarnings } from 'graphql-tag';
 disableFragmentWarnings();
 
-import * as camelCase from 'camelcase';
-const snake_case = require('snake-case');
+import { camelize, decamelize } from 'humps';
 import * as fetchMock from 'fetch-mock';
 
 import {
@@ -132,10 +131,10 @@ describe('Configuration', async () => {
       expect.assertions(3);
       const link = new JsonApiLink({
         uri: '/api',
-        fieldNameNormalizer: camelCase,
+        fieldNameNormalizer: camelize,
       });
-      // "Server" returns TitleCased and snake_cased fields
-      // fieldNameNormalizer changes them to camelCase
+      // "Server" returns TitleCased and decamelized fields
+      // fieldNameNormalizer changes them to camelize
       const post = {
         data: { type: 'posts', id: '1', attributes: { Title: 'Love apollo' } },
       };
@@ -186,7 +185,7 @@ describe('Configuration', async () => {
       expect.assertions(2);
       const link = new JsonApiLink({
         uri: '/api',
-        fieldNameNormalizer: camelCase,
+        fieldNameNormalizer: camelize,
       });
       const post = {
         data: { type: 'posts', id: '1', attributes: { Title: 'Love apollo' } },
@@ -2080,64 +2079,72 @@ describe('Mutation', () => {
     afterEach(() => {
       fetchMock.restore();
     });
-    it.skip('corrects names to snake_case for link-level denormalizer', async () => {
+
+    it('corrects names to decamelize for link-level denormalizer', async () => {
       expect.assertions(3);
 
       const link = new JsonApiLink({
         uri: '/api',
-        fieldNameNormalizer: camelCase,
-        fieldNameDenormalizer: snake_case,
+        fieldNameNormalizer: name => camelize(name),
+        fieldNameDenormalizer: decamelize,
       });
 
-      // the id in this hash simulates the server *assigning* an id for the new post
       const snakePost = { title_string: 'Love apollo', category_id: 6 };
+      fetchMock.post('/api/posts', {
+        data: {
+          id: '1',
+          type: 'posts',
+          attributes: snakePost,
+        },
+      });
       const camelPost = { titleString: 'Love apollo', categoryId: 6 };
-      fetchMock.post('/api/posts/new', { id: 1, ...snakePost });
-      const intermediatePost = snakePost;
-      const resultPost = { ...camelPost, id: 1 };
 
       const createPostMutation = gql`
-        fragment PublishablePostInput on REST {
-          titleString: String
-          categoryId: Number
-        }
-
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @jsonapi(type: "Post", path: "/posts/new", method: "POST") {
+            @jsonapi(path: "/posts", method: "POST") {
             id
             titleString
             categoryId
           }
         }
       `;
+
       const response = await makePromise<Result>(
         execute(link, {
           operationName: 'publishPost',
           query: createPostMutation,
-          variables: { input: camelPost },
+          variables: {
+            input: { data: { type: 'posts', attributes: camelPost } },
+          },
         }),
       );
 
-      const requestCall = fetchMock.calls('/api/posts/new')[0];
+      const requestCall = fetchMock.calls('/api/posts')[0];
 
       expect(requestCall[1]).toEqual(
         expect.objectContaining({
           method: 'POST',
         }),
       );
-      expect(JSON.parse(requestCall[1].body)).toMatchObject(intermediatePost);
+      expect(JSON.parse(requestCall[1].body)).toMatchObject({
+        data: {
+          type: 'posts',
+          attributes: snakePost,
+        },
+      });
 
       expect(response.data.publishedPost).toEqual(
-        expect.objectContaining(resultPost),
+        expect.objectContaining({ ...camelPost, id: '1', __typename: 'Posts' }),
       );
     });
-    it.skip('corrects names to snake_case for request-level denormalizer', async () => {
+
+    it.skip('corrects names to decamelize for request-level denormalizer', async () => {
       expect.assertions(3);
 
       const link = new JsonApiLink({
         uri: '/api',
-        fieldNameNormalizer: camelCase,
+        fieldNameNormalizer: camelize,
       });
 
       // the id in this hash simulates the server *assigning* an id for the new post
@@ -2171,7 +2178,7 @@ describe('Mutation', () => {
         execute(link, {
           operationName: 'publishPost',
           query: createPostMutation,
-          variables: { input: camelPost, requestLevelDenormalizer: snake_case },
+          variables: { input: camelPost, requestLevelDenormalizer: decamelize },
         }),
       );
 

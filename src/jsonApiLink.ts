@@ -194,12 +194,6 @@ export namespace JsonApiLink {
      * Warning: This is an Advanced API and we are looking for syntactic & ergonomics feedback.
      */
     bodyBuilder?: (props: JsonApiLinkHelperProps) => object;
-    /**
-     * Optional field that defines the name of the env var to extract and use as the body
-     * @default "input"
-     * @see https://dev-blog.apollodata.com/designing-graphql-mutations-e09de826ed97
-     */
-    bodyKey?: string;
 
     /**
      * Optional serialization function or a key that will be used look up the serializer to serialize the request body before transport.
@@ -848,7 +842,7 @@ const resolver: Resolver = async (
   let overrideHeaders: Headers = undefined;
   if (-1 === ['GET', 'DELETE'].indexOf(method)) {
     body = convertObjectKeys(
-      params => params.input,
+      allParams.args.input,
       perRequestNameDenormalizer ||
         linkLevelNameDenormalizer ||
         noOpNameNormalizer,
