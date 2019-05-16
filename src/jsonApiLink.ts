@@ -1028,7 +1028,7 @@ const DEFAULT_JSON_SERIALIZER: JsonApiLink.Serializer = (
   headers: Headers,
 ) => {
   if (!headers.has('content-type')) {
-    headers.append('Content-Type', 'application/json');
+    headers.append('Content-Type', 'application/vnd.api+json');
   }
   return {
     body: JSON.stringify(data),
@@ -1178,7 +1178,7 @@ export class JsonApiLink extends ApolloLink {
     if (!headers.has('Accept')) {
       // Since we assume a json body on successful responses set the Accept
       // header accordingly if it is not provided by the user
-      headers.append('Accept', 'application/json');
+      headers.append('Accept', 'application/vnd.api+json');
     }
 
     const credentials: RequestCredentials =
