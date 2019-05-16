@@ -3254,7 +3254,7 @@ describe('Playing nice with others', () => {
   });
 
   function buildLinks() {
-    const restLink = new JsonApiLink({ uri: '/api' });
+    const jsonApiLink = new JsonApiLink({ uri: '/api' });
     const httpLink = new HttpLink({ uri: '/graphql' });
     const clientLink = withClientState({
       cache: new InMemoryCache(),
@@ -3273,7 +3273,7 @@ describe('Playing nice with others', () => {
       },
     });
 
-    return { restLink, httpLink, clientLink };
+    return { jsonApiLink, httpLink, clientLink };
   }
 
   const posts = [
@@ -3298,8 +3298,8 @@ describe('Playing nice with others', () => {
   it('should work alongside apollo-link-http', async () => {
     fetchMock.get('/api/posts', { data: posts });
     fetchMock.post('/graphql', authors);
-    const { restLink, httpLink } = buildLinks();
-    const link = from([restLink, httpLink]);
+    const { jsonApiLink, httpLink } = buildLinks();
+    const link = from([jsonApiLink, httpLink]);
     const restQuery = gql`
       query {
         posts @jsonapi(path: "/posts") {
@@ -3355,8 +3355,8 @@ describe('Playing nice with others', () => {
     fetchMock.get('/api/posts/3', []);
     fetchMock.post('/graphql', authors);
 
-    const { restLink, httpLink } = buildLinks();
-    const link = from([restLink, httpLink]);
+    const { jsonApiLink, httpLink } = buildLinks();
+    const link = from([jsonApiLink, httpLink]);
 
     const combinedQuery = gql`
       query {
@@ -3394,8 +3394,8 @@ describe('Playing nice with others', () => {
   it.skip('should forward errors from apollo-link-http', async () => {
     fetchMock.get('/api/posts', posts);
     fetchMock.post('/graphql', authorErrors);
-    const { restLink, httpLink } = buildLinks();
-    const link = from([restLink, httpLink]);
+    const { jsonApiLink, httpLink } = buildLinks();
+    const link = from([jsonApiLink, httpLink]);
 
     const combinedQuery = gql`
       query {
@@ -3426,9 +3426,9 @@ describe('Playing nice with others', () => {
 
   it.skip('should work alongside apollo-link-state', async () => {
     fetchMock.get('/api/posts', posts);
-    const { restLink, clientLink } = buildLinks();
+    const { jsonApiLink, clientLink } = buildLinks();
     // TODO Investigate why this order can't be swapped because client seems to strip the __typename field.
-    const link = from([restLink, clientLink]);
+    const link = from([jsonApiLink, clientLink]);
 
     const combinedQuery = gql`
       query {
@@ -3457,9 +3457,9 @@ describe('Playing nice with others', () => {
 
   it.skip('should work nested in apollo-link-state', async () => {
     fetchMock.get('/api/posts', posts);
-    const { restLink, clientLink } = buildLinks();
+    const { jsonApiLink, clientLink } = buildLinks();
     // TODO Investigate why this order can't be swapped because client seems to strip the __typename field.
-    const link = from([restLink, clientLink]);
+    const link = from([jsonApiLink, clientLink]);
 
     const combinedQuery = gql`
       query {
@@ -3491,9 +3491,9 @@ describe('Playing nice with others', () => {
     fetchMock.get('/api/posts/2', [posts[1]]);
     fetchMock.get('/api/posts/3', []);
     fetchMock.post('/graphql', authors);
-    const { clientLink, restLink, httpLink } = buildLinks();
+    const { clientLink, jsonApiLink, httpLink } = buildLinks();
 
-    const link = from([restLink, clientLink, httpLink]);
+    const link = from([jsonApiLink, clientLink, httpLink]);
 
     const combinedQuery = gql`
       query {
