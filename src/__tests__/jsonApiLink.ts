@@ -2957,21 +2957,6 @@ describe('Apollo client integration', () => {
     const combinedLink = ApolloLink.from([
       new JsonApiLink({
         uri: '/api',
-        typePatcher: {
-          Post: (
-            data: any,
-            outerType: string,
-            patchDeeper: JsonApiLink.FunctionalTypePatcher,
-          ): any => {
-            // Let's make unfairCriticism a Required Field
-            if (data.unfairCriticism == null) {
-              throw new Error(
-                'Required Field: unfairCriticism missing in RESTResponse.',
-              );
-            }
-            return data;
-          },
-        },
       }),
       errorLink,
     ]);
