@@ -34,16 +34,24 @@ const flattenResource = ({
   };
 };
 
-const findResource = ({ id, type }, resources) =>
-  resources.find(
+const findResource = ({ id, type }, resources) => {
+  const result = resources.find(
     ({ id: resourceId, type: resourceType }) =>
       id === resourceId && type === resourceType,
   );
+  console.log('Found resource', result);
+  return result;
+};
 
-const denormalizeRelationships = (data, rest) => {
-  if (!rest.included || !data.relationships) {
+const _denormalizeRelationships = (data, allResources) => {
+  if (!data || !data.relationships || data.__relationships_denormalizing) {
     return data;
   }
+  data.__relationships_denormalizing = true;
+
+  console.log(data);
+  console.log(allResources);
+
   const relationships = mapObject(
     data.relationships,
     ([relationshipName, related]) => {
@@ -51,23 +59,34 @@ const denormalizeRelationships = (data, rest) => {
         return [relationshipName, null];
       }
       if (Array.isArray(related.data)) {
+        console.log(related.data);
         return [
           relationshipName,
           related.data.map(item =>
-            denormalizeRelationships(findResource(item, rest.included), rest),
+            _denormalizeRelationships(
+              findResource(item, allResources),
+              allResources,
+            ),
           ),
         ];
       }
       return [
         relationshipName,
-        denormalizeRelationships(
-          findResource(related.data, rest.included),
-          rest,
+        _denormalizeRelationships(
+          findResource(related.data, allResources),
+          allResources,
         ),
       ];
     },
   );
   return { ...data, relationships };
+};
+
+const denormalizeRelationships = (data, { included }) => {
+  if (!included) {
+    return data;
+  }
+  return _denormalizeRelationships(data, [data, ...included]);
 };
 
 const typenameIncludedResources = ({ included, ...rest }) => {

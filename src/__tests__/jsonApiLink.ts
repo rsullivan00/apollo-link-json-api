@@ -348,7 +348,7 @@ describe('Query single call', () => {
     });
   });
 
-  it('can handle array result', async () => {
+  it('can handle array results', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
@@ -528,6 +528,116 @@ describe('Query single call', () => {
         id: bookWithRelated.id,
         title: bookWithRelated.attributes.title,
         author: { id: author.id, name: author.attributes.name },
+      },
+    });
+  });
+
+  it('can query through nested and looping relationships', async () => {
+    expect.assertions(1);
+
+    const link = new JsonApiLink({ uri: '/api' });
+    const book1 = {
+      id: 'book1',
+      type: 'books',
+      attributes: { title: 'A Game of Thrones' },
+      relationships: {
+        author: { data: { id: 'author1', type: 'authors' } },
+      },
+    };
+    const book6 = {
+      id: 'book6',
+      type: 'books',
+      attributes: { title: 'The Winds of Winter' },
+      relationships: {
+        author: { data: { id: 'author2', type: 'authors' } },
+      },
+    };
+    const series = {
+      id: 'series1',
+      type: 'series',
+      attributes: {
+        title: 'A Song of Ice and Fire',
+      },
+      relationships: {
+        books: {
+          data: [
+            { id: book1.id, type: book1.type },
+            { id: book6.id, type: book6.type },
+          ],
+        },
+      },
+    };
+    const george = {
+      id: 'author1',
+      type: 'authors',
+      attributes: { name: 'George R. R. Martin' },
+      relationships: {
+        series: { data: [{ id: series.id, type: series.type }] },
+        books: {
+          data: [{ id: book1.id, type: book1.type }],
+        },
+      },
+    };
+    const brandon = {
+      id: 'author2',
+      type: 'authors',
+      attributes: { name: 'Brandon Sanderson' },
+    };
+
+    fetchMock.get('glob:/api/authors/1?include=*', {
+      data: george,
+      included: [brandon, book1, book6, series],
+    });
+
+    const complexRelationshipsQuery = gql`
+      query complexRelationships {
+        primaryAuthor
+          @jsonapi(
+            path: "/authors/1?include=books,series,series.books,series.books.author"
+          ) {
+          name
+          books {
+            title
+          }
+          series {
+            title
+            books {
+              title
+              author {
+                name
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const { data } = await makePromise<Result>(
+      execute(link, {
+        operationName: 'complexRelationships',
+        query: complexRelationshipsQuery,
+      }),
+    );
+
+    expect(data).toMatchObject({
+      primaryAuthor: {
+        name: george.attributes.name,
+        books: [{ title: book1.attributes.title }],
+        series: [
+          {
+            title: series.attributes.title,
+            books: [
+              {
+                title: book1.attributes.title,
+                author: { name: george.attributes.name },
+              },
+              {
+                title: book6.attributes.title,
+                author: { name: brandon.attributes.name },
+              },
+            ],
+          },
+        ],
       },
     });
   });
