@@ -1232,7 +1232,7 @@ describe('Query options', () => {
   });
 
   describe('headers', () => {
-    it.skip('sets the Accept: application/json header if not provided', async () => {
+    it('sets the Accept: application/vnd.api+json header if not provided', async () => {
       expect.assertions(2);
 
       fetchMock.get('/api/posts', []);
@@ -1261,13 +1261,14 @@ describe('Query options', () => {
 
       const requestCalls = fetchMock.calls('/api/posts');
       expect(orderDupPreservingFlattenedHeaders(requestCalls[0][1])).toEqual([
-        'accept: application/json',
+        'accept: application/vnd.api+json',
       ]);
       expect(orderDupPreservingFlattenedHeaders(requestCalls[1][1])).toEqual([
         'accept: text/plain',
       ]);
     });
-    it.skip('adds headers to the request from the context', async () => {
+
+    it('adds headers to the request from the context', async () => {
       expect.assertions(2);
 
       const headersMiddleware = new ApolloLink((operation, forward) => {
@@ -1285,12 +1286,14 @@ describe('Query options', () => {
         new JsonApiLink({ uri: '/api' }),
       ]);
 
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(type: "Post", path: "/post/{args.id}") {
             id
             title
           }
@@ -1307,22 +1310,25 @@ describe('Query options', () => {
 
       const requestCall = fetchMock.calls('/api/post/1')[0];
       expect(orderDupPreservingFlattenedHeaders(requestCall[1])).toEqual([
-        'accept: application/json',
+        'accept: application/vnd.api+json',
         'authorization: 1234',
       ]);
     });
-    it.skip('adds headers to the request from the setup', async () => {
+
+    it('adds headers to the request from the setup', async () => {
       const link = new JsonApiLink({
         uri: '/api',
         headers: { authorization: '1234' },
       });
 
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(type: "Post", path: "/post/{args.id}") {
             id
             title
           }
@@ -1346,7 +1352,8 @@ describe('Query options', () => {
         }),
       );
     });
-    it.skip('prioritizes context headers over setup headers', async () => {
+
+    it('prioritizes context headers over setup headers', async () => {
       expect.assertions(2);
 
       const headersMiddleware = new ApolloLink((operation, forward) => {
@@ -1373,12 +1380,14 @@ describe('Query options', () => {
         }),
       ]);
 
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributres: { title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(path: "/post/{args.id}") {
             id
             title
           }
@@ -1395,13 +1404,14 @@ describe('Query options', () => {
 
       const requestCall = fetchMock.calls('/api/post/1')[0];
       expect(orderDupPreservingFlattenedHeaders(requestCall[1])).toEqual([
-        'accept: application/json',
+        'accept: application/vnd.api+json',
         'authorization: 1234',
         'context: context',
         'setup: setup, in-context duplicate setup',
       ]);
     });
-    it.skip('respects context-provided header-merge policy', async () => {
+
+    it('respects context-provided header-merge policy', async () => {
       expect.assertions(2);
 
       const headersMiddleware = new ApolloLink((operation, forward) => {
@@ -1436,12 +1446,14 @@ describe('Query options', () => {
         }),
       ]);
 
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(path: "/post/{args.id}") {
             id
             title
           }
@@ -1467,7 +1479,8 @@ describe('Query options', () => {
         }),
       );
     });
-    it.skip('preserves duplicative headers in their correct order', async () => {
+
+    it('preserves duplicative headers in their correct order', async () => {
       expect.assertions(2);
 
       const headersMiddleware = new ApolloLink((operation, forward) => {
@@ -1488,12 +1501,14 @@ describe('Query options', () => {
         }),
       ]);
 
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(path: "/post/{args.id}") {
             id
             title
           }
@@ -1515,11 +1530,12 @@ describe('Query options', () => {
         orderedFlattened.push(`${key}: ${value}`);
       });
       expect(orderedFlattened).toEqual([
-        'accept: application/json',
+        'accept: application/vnd.api+json',
         'authorization: initial setup, context',
       ]);
     });
-    it.skip('generates a new headers object if headers are undefined', async () => {
+
+    it('generates a new headers object if headers are undefined', async () => {
       const headersMiddleware = new ApolloLink((operation, forward) => {
         operation.setContext({
           headers: undefined,
@@ -1535,12 +1551,14 @@ describe('Query options', () => {
         new JsonApiLink({ uri: '/api', headers: undefined }),
       ]);
 
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
       fetchMock.get('/api/post/1', post);
 
       const postTitleQuery = gql`
         query postTitle {
-          post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
+          post(id: "1") @jsonapi(path: "/post/{args.id}") {
             id
             title
           }
@@ -1557,7 +1575,7 @@ describe('Query options', () => {
 
       const requestCall = fetchMock.calls('/api/post/1')[0];
       expect(orderDupPreservingFlattenedHeaders(requestCall[1])).toEqual([
-        'accept: application/json',
+        'accept: application/vnd.api+json',
       ]);
     });
   });
