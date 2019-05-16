@@ -2824,17 +2824,19 @@ describe('Apollo client integration', () => {
     fetchMock.restore();
   });
 
-  it.skip('can integrate with apollo client', async () => {
+  it('can integrate with apollo client', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
 
-    const post = { id: '1', title: 'Love apollo' };
+    const post = {
+      data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+    };
     fetchMock.get('/api/post/1', post);
 
     const postTagExport = gql`
       query {
-        post @jsonapi(type: "Post", path: "/post/1") {
+        post @jsonapi(path: "/post/1") {
           id
           title
         }
@@ -2853,17 +2855,19 @@ describe('Apollo client integration', () => {
     expect(data.post).toBeDefined();
   });
 
-  it.skip('has an undefined body on GET requests', async () => {
+  it('has an undefined body on GET requests', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
 
-    const post = { id: '1', title: 'Love apollo' };
+    const post = {
+      data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+    };
     fetchMock.get('/api/post/1', post);
 
     const postTagExport = gql`
       query {
-        post @jsonapi(type: "Post", path: "/post/1") {
+        post @jsonapi(path: "/post/1") {
           id
           title
         }
@@ -2882,27 +2886,40 @@ describe('Apollo client integration', () => {
     expect(fetchMock.lastCall()[1].body).toBeUndefined();
   });
 
-  it.skip('treats absent response fields as optional', async done => {
+  it('treats absent response fields as optional', async done => {
     // Discovered in: https://github.com/apollographql/apollo-link-rest/issues/74
 
     const link = new JsonApiLink({ uri: '/api' });
 
     const post = {
-      id: '1',
-      title: 'Love apollo',
-      content: 'Best graphql client ever.',
+      data: {
+        type: 'posts',
+        id: '1',
+        attributes: {
+          title: 'Love apollo',
+          content: 'Best graphql client ever.',
+        },
+      },
     };
-    const comments = [{ id: 'c.12345', text: 'This is great.' }];
+    const comments = {
+      data: [
+        {
+          type: 'comments',
+          id: 'c.12345',
+          attributes: { text: 'This is great.' },
+        },
+      ],
+    };
     fetchMock.get('/api/post/1', post);
     fetchMock.get('/api/post/1/comments', comments);
 
     const postTitleQuery = gql`
       query postTitle {
-        post @jsonapi(type: "Post", path: "/post/1") {
+        post @jsonapi(path: "/post/1") {
           id
           title
           unfairCriticism
-          comments @jsonapi(type: "Comment", path: "/post/1/comments") {
+          comments @jsonapi(path: "/post/1/comments") {
             id
             text
             spammyContent
@@ -2976,7 +2993,7 @@ describe('Apollo client integration', () => {
     }
   });
 
-  it.skip('can catch HTTP Status errors', async done => {
+  it('can catch HTTP Status errors', async done => {
     const link = new JsonApiLink({ uri: '/api' });
 
     const status = 403;
@@ -2999,7 +3016,7 @@ describe('Apollo client integration', () => {
 
     fetchMock.mock('/api/post/1', {
       status,
-      body: { id: 1 },
+      body: { data: { type: 'posts', id: 1, attributes: {} } },
     });
 
     try {
@@ -3012,7 +3029,7 @@ describe('Apollo client integration', () => {
     }
   });
 
-  it.skip('supports being cancelled and does not throw', done => {
+  it('supports being cancelled and does not throw', done => {
     class AbortError extends Error {
       constructor(message) {
         super(message);
