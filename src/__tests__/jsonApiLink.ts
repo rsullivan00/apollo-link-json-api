@@ -2802,7 +2802,7 @@ describe('Mutation', () => {
 
 describe('validateRequestMethodForOperationType', () => {
   describe('for operation type "mutation"', () => {
-    it.skip('throws because it is not supported yet', () => {
+    it('throws because it is not supported yet', () => {
       expect.assertions(1);
       expect(() =>
         validateRequestMethodForOperationType('GIBBERISH', 'mutation'),
@@ -2810,7 +2810,7 @@ describe('validateRequestMethodForOperationType', () => {
     });
   });
   describe('for operation type "subscription"', () => {
-    it.skip('throws because it is not supported yet', () => {
+    it('throws because it is not supported yet', () => {
       expect.assertions(1);
       expect(() =>
         validateRequestMethodForOperationType('GET', 'subscription'),
@@ -2819,222 +2819,24 @@ describe('validateRequestMethodForOperationType', () => {
   });
 });
 
-describe('export directive', () => {
-  afterEach(() => {
-    fetchMock.restore();
-  });
-  it.skip('should throw an error if export is missing', async () => {
-    expect.assertions(1);
-
-    const link = new JsonApiLink({ uri: '/api' });
-
-    const post = { id: '1', title: 'Love apollo', tagId: 6 };
-    fetchMock.get('/api/post/1', post);
-
-    const postTagWithoutExport = gql`
-      query postTitle {
-        post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
-          tagId
-          title
-          tag @jsonapi(type: "Tag", path: "/tag/:tagId") {
-            name
-          }
-        }
-      }
-    `;
-
-    try {
-      await makePromise<Result>(
-        execute(link, {
-          operationName: 'postTitle',
-          query: postTagWithoutExport,
-          variables: { id: '1' },
-        }),
-      );
-    } catch (e) {
-      expect(e.message).toBe(
-        'Missing parameters to run query, specify it in the query params or use ' +
-          'an export directive. (If you need to use ":" inside a variable string' +
-          ' make sure to encode the variables properly using `encodeURIComponent' +
-          '`. Alternatively see documentation about using pathBuilder.)',
-      );
-    }
-  });
-  it.skip('can use a variable from export', async () => {
-    expect.assertions(1);
-
-    const link = new JsonApiLink({ uri: '/api' });
-
-    const post = { id: '1', title: 'Love apollo', tagId: 6 };
-    fetchMock.get('/api/post/1', post);
-    const tag = { name: 'apollo' };
-    fetchMock.get('/api/tag/6', tag);
-
-    const postTagExport = gql`
-      query postTitle {
-        post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
-          tagId @export(as: "tagId")
-          title
-          tag @jsonapi(type: "Tag", path: "/tag/:tagId") {
-            name
-          }
-        }
-      }
-    `;
-
-    const { data } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'postTitle',
-        query: postTagExport,
-        variables: { id: '1' },
-      }),
-    );
-
-    expect(data.post.tag).toEqual({ ...tag, __typename: 'Tag' });
-  });
-
-  it.skip('can use two variables from export', async () => {
-    expect.assertions(2);
-
-    const link = new JsonApiLink({ uri: '/api' });
-
-    const post = { id: '1', title: 'Love apollo', tagId: 6, postAuthor: 10 };
-    fetchMock.get('/api/post/1', post);
-    const tag = { name: 'apollo' };
-    fetchMock.get('/api/tag/6', tag);
-    const author = { name: 'Sashko' };
-    fetchMock.get('/api/users/10', author);
-
-    const postTagExport = gql`
-      query postTitle {
-        post(id: "1") @jsonapi(type: "Post", path: "/post/:id") {
-          tagId @export(as: "tagId")
-          postAuthor @export(as: "authorId")
-          title
-          tag @jsonapi(type: "Tag", path: "/tag/:tagId") {
-            name
-          }
-          author @jsonapi(type: "User", path: "/users/:authorId") {
-            name
-          }
-        }
-      }
-    `;
-
-    const { data } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'postTitle',
-        query: postTagExport,
-        variables: { id: '1' },
-      }),
-    );
-
-    expect(data.post.tag).toEqual({ ...tag, __typename: 'Tag' });
-    expect(data.post.author).toEqual({ ...author, __typename: 'User' });
-  });
-
-  it.skip('can handle nested exports with deeply structured response data', async () => {
-    expect.assertions(3);
-
-    const link = new JsonApiLink({ uri: '/api' });
-
-    const user = {
-      id: 'user-a',
-      posts: [
-        {
-          id: 'post-a',
-          tags: [
-            {
-              id: 'tag-a',
-            },
-            {
-              id: 'tag-b',
-            },
-          ],
-        },
-        {
-          id: 'post-b',
-          tags: [
-            {
-              id: 'tag-c',
-            },
-          ],
-        },
-      ],
-    };
-    fetchMock.get('/api/user', user);
-    const postATagA = {
-      id: 'tag-a-details',
-      message: 'this is tag details a',
-    };
-    fetchMock.get('/api/posts/post-a/tags/tag-a', postATagA);
-    const postATagB = {
-      id: 'tag-b-details',
-      message: 'this is tag details b',
-    };
-    fetchMock.get('/api/posts/post-a/tags/tag-b', postATagB);
-    const postBTagC = {
-      id: 'tag-c-details',
-      message: 'this is tag details c',
-    };
-    fetchMock.get('/api/posts/post-b/tags/tag-c', postBTagC);
-
-    const userPostsWithTagDetails = gql`
-      query userPostsWithTagDetails {
-        user @jsonapi(path: "/user") {
-          id
-          posts {
-            id @export(as: "postId")
-            tags {
-              id @export(as: "tagId")
-              details
-                @jsonapi(
-                  path: "/posts/{exportVariables.postId}/tags/{exportVariables.tagId}"
-                ) {
-                id
-                message
-              }
-            }
-          }
-        }
-      }
-    `;
-
-    const { data } = await makePromise<Result>(
-      execute(link, {
-        operationName: 'userPostsWithTagDetails',
-        query: userPostsWithTagDetails,
-      }),
-    );
-
-    expect(data.user.posts[0].tags[0].details.message).toEqual(
-      'this is tag details a',
-    );
-    expect(data.user.posts[0].tags[1].details.message).toEqual(
-      'this is tag details b',
-    );
-    expect(data.user.posts[1].tags[0].details.message).toEqual(
-      'this is tag details c',
-    );
-  });
-});
-
 describe('Apollo client integration', () => {
   afterEach(() => {
     fetchMock.restore();
   });
 
-  it.skip('can integrate with apollo client', async () => {
+  it('can integrate with apollo client', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
 
-    const post = { id: '1', title: 'Love apollo' };
+    const post = {
+      data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+    };
     fetchMock.get('/api/post/1', post);
 
     const postTagExport = gql`
       query {
-        post @jsonapi(type: "Post", path: "/post/1") {
+        post @jsonapi(path: "/post/1") {
           id
           title
         }
@@ -3053,17 +2855,19 @@ describe('Apollo client integration', () => {
     expect(data.post).toBeDefined();
   });
 
-  it.skip('has an undefined body on GET requests', async () => {
+  it('has an undefined body on GET requests', async () => {
     expect.assertions(1);
 
     const link = new JsonApiLink({ uri: '/api' });
 
-    const post = { id: '1', title: 'Love apollo' };
+    const post = {
+      data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+    };
     fetchMock.get('/api/post/1', post);
 
     const postTagExport = gql`
       query {
-        post @jsonapi(type: "Post", path: "/post/1") {
+        post @jsonapi(path: "/post/1") {
           id
           title
         }
@@ -3082,27 +2886,40 @@ describe('Apollo client integration', () => {
     expect(fetchMock.lastCall()[1].body).toBeUndefined();
   });
 
-  it.skip('treats absent response fields as optional', async done => {
+  it('treats absent response fields as optional', async done => {
     // Discovered in: https://github.com/apollographql/apollo-link-rest/issues/74
 
     const link = new JsonApiLink({ uri: '/api' });
 
     const post = {
-      id: '1',
-      title: 'Love apollo',
-      content: 'Best graphql client ever.',
+      data: {
+        type: 'posts',
+        id: '1',
+        attributes: {
+          title: 'Love apollo',
+          content: 'Best graphql client ever.',
+        },
+      },
     };
-    const comments = [{ id: 'c.12345', text: 'This is great.' }];
+    const comments = {
+      data: [
+        {
+          type: 'comments',
+          id: 'c.12345',
+          attributes: { text: 'This is great.' },
+        },
+      ],
+    };
     fetchMock.get('/api/post/1', post);
     fetchMock.get('/api/post/1/comments', comments);
 
     const postTitleQuery = gql`
       query postTitle {
-        post @jsonapi(type: "Post", path: "/post/1") {
+        post @jsonapi(path: "/post/1") {
           id
           title
           unfairCriticism
-          comments @jsonapi(type: "Comment", path: "/post/1/comments") {
+          comments @jsonapi(path: "/post/1/comments") {
             id
             text
             spammyContent
@@ -3176,7 +2993,7 @@ describe('Apollo client integration', () => {
     }
   });
 
-  it.skip('can catch HTTP Status errors', async done => {
+  it('can catch HTTP Status errors', async done => {
     const link = new JsonApiLink({ uri: '/api' });
 
     const status = 403;
@@ -3199,7 +3016,7 @@ describe('Apollo client integration', () => {
 
     fetchMock.mock('/api/post/1', {
       status,
-      body: { id: 1 },
+      body: { data: { type: 'posts', id: 1, attributes: {} } },
     });
 
     try {
@@ -3212,7 +3029,7 @@ describe('Apollo client integration', () => {
     }
   });
 
-  it.skip('supports being cancelled and does not throw', done => {
+  it('supports being cancelled and does not throw', done => {
     class AbortError extends Error {
       constructor(message) {
         super(message);
