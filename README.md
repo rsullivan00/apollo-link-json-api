@@ -1,4 +1,5 @@
-# JSON API Link [![Build Status](https://travis-ci.com/Rsullivan00/apollo-link-json-api.svg?branch=master)](https://travis-ci.com/Rsullivan00/apollo-link-json-api)
+# JSON API Link [![Build Status](https://travis-ci.com/Rsullivan00/apollo-link-json-api.svg?branch=master)](https://travis-ci.com/Rsullivan00/apollo-link-json-api)  [![codecov](https://codecov.io/gh/Rsullivan00/apollo-link-json-api/branch/master/graph/badge.svg)](https://codecov.io/gh/Rsullivan00/apollo-link-json-api)
+
 
 ## Purpose
 
