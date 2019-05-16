@@ -58,15 +58,6 @@ export namespace JsonApiLink {
     (fieldName: string, keypath?: string[]): string;
   }
 
-  /** injects __typename using user-supplied code */
-  export interface FunctionalTypePatcher {
-    (data: any, outerType: string, patchDeeper: FunctionalTypePatcher): any;
-  }
-  /** Table of mappers that help inject __typename per type described therein */
-  export interface TypePatcherTable {
-    [typename: string]: FunctionalTypePatcher;
-  }
-
   export interface SerializedBody {
     body: any;
     headers: InitializationHeaders;
@@ -133,8 +124,6 @@ export namespace JsonApiLink {
     /**
      * A function that takes the response field name and converts it into a GraphQL compliant name
      *
-     * @note This is called *before* @see typePatcher so that it happens after
-     *       optional-field-null-insertion.
      */
     fieldNameNormalizer?: FieldNameNormalizer;
 
@@ -143,21 +132,6 @@ export namespace JsonApiLink {
      * Can be overridden at the mutation-call-site (in the rest-directive).
      */
     fieldNameDenormalizer?: FieldNameNormalizer;
-
-    /**
-     * Structure to allow you to specify the __typename when you have nested objects in your REST response!
-     *
-     * If you want to force Required Properties, you can throw an error in your patcher,
-     *  or `delete` a field from the data response provided to your typePatcher function!
-     *
-     * @note: This is called *after* @see fieldNameNormalizer because that happens
-     *        after optional-nulls insertion, and those would clobber normalized names.
-     *
-     * @warning: We're not thrilled with this API, and would love a better alternative before we get to 1.0.0
-     *           Please see proposals considered in https://github.com/apollographql/apollo-link-rest/issues/48
-     *           And consider submitting alternate solutions to the problem!
-     */
-    typePatcher?: TypePatcherTable;
 
     /**
      * The credentials policy you want to use for the fetch call.
@@ -241,48 +215,6 @@ export namespace JsonApiLink {
     fieldNameDenormalizer?: JsonApiLink.FieldNameNormalizer;
   }
 }
-
-const popOneSetOfArrayBracketsFromTypeName = (typename: string): string => {
-  const noSpace = typename.replace(/\s/g, '');
-  const sansOneBracketPair = noSpace.replace(
-    /\[(.*)\]/,
-    (str, matchStr, offset, fullStr) => {
-      return (
-        ((matchStr != null && matchStr.length) > 0 ? matchStr : null) || noSpace
-      );
-    },
-  );
-  return sansOneBracketPair;
-};
-
-const addTypeNameToResult = (
-  result: any[] | object,
-  __typename: string,
-  typePatcher: JsonApiLink.FunctionalTypePatcher,
-): any[] | object => {
-  if (Array.isArray(result)) {
-    let fixedTypename;
-    try {
-      fixedTypename = popOneSetOfArrayBracketsFromTypeName(__typename);
-    } catch (e) {
-      debugger;
-    }
-    // Recursion needed for multi-dimensional arrays
-    const mappedResult = result.map(e =>
-      addTypeNameToResult(e, fixedTypename, typePatcher),
-    );
-    return mappedResult;
-  }
-  if (
-    null == result ||
-    typeof result === 'number' ||
-    typeof result === 'boolean' ||
-    typeof result === 'string'
-  ) {
-    return result;
-  }
-  return typePatcher(result, __typename, typePatcher);
-};
 
 const quickFindJsonApiDirective = (
   field: FieldNode,
@@ -374,9 +306,6 @@ function findRestDirectivesThenInsertNullsForOmittedFields(
  *
  * This is needed because ApolloClient will throw an error automatically if it's
  *  missing -- effectively making all of rest-link's selections implicitly non-optional.
- *
- * If you want to implement required fields, you need to use typePatcher to *delete*
- *  fields when they're null and you want the query to fail instead.
  *
  * @param current Current object we're patching
  * @param mainDefinition Parsed Query Definition
@@ -792,7 +721,6 @@ interface RequestContext {
   fieldNameDenormalizer: JsonApiLink.FieldNameNormalizer;
   mainDefinition: OperationDefinitionNode | FragmentDefinitionNode;
   fragmentDefinitions: FragmentDefinitionNode[];
-  typePatcher: JsonApiLink.FunctionalTypePatcher;
   serializers: JsonApiLink.Serializers;
 
   /** An array of the responses from each fetched URL */
@@ -868,7 +796,6 @@ const resolver: Resolver = async (
     headers,
     customFetch,
     operationType,
-    typePatcher,
     mainDefinition,
     fragmentDefinitions,
     fieldNameNormalizer,
@@ -911,7 +838,6 @@ const resolver: Resolver = async (
 
   let {
     method,
-    type,
     fieldNameDenormalizer: perRequestNameDenormalizer,
   } = directives.jsonapi as JsonApiLink.DirectiveOptions;
   if (!method) {
@@ -1004,7 +930,6 @@ const resolver: Resolver = async (
     mainDefinition.selectionSet,
   );
 
-  result = addTypeNameToResult(result, type, typePatcher);
   return copyExportVariables(result);
 };
 
@@ -1039,7 +964,6 @@ export class JsonApiLink extends ApolloLink {
   private readonly headers: Headers;
   private readonly fieldNameNormalizer: JsonApiLink.FieldNameNormalizer;
   private readonly fieldNameDenormalizer: JsonApiLink.FieldNameNormalizer;
-  private readonly typePatcher: JsonApiLink.FunctionalTypePatcher;
   private readonly credentials: RequestCredentials;
   private readonly customFetch: JsonApiLink.CustomFetch;
   private readonly serializers: JsonApiLink.Serializers;
@@ -1050,7 +974,6 @@ export class JsonApiLink extends ApolloLink {
     headers,
     fieldNameNormalizer,
     fieldNameDenormalizer,
-    typePatcher,
     customFetch,
     credentials,
     bodySerializers,
@@ -1079,43 +1002,6 @@ export class JsonApiLink extends ApolloLink {
     if (this.endpoints[DEFAULT_ENDPOINT_KEY] == null) {
       console.warn(
         'JsonApiLink configured without a default URI. All @jsonapi(…) directives must provide an endpoint key!',
-      );
-    }
-
-    if (typePatcher == null) {
-      this.typePatcher = (result, __typename, _2) => {
-        return { __typename, ...result };
-      };
-    } else if (
-      !Array.isArray(typePatcher) &&
-      typeof typePatcher === 'object' &&
-      Object.keys(typePatcher)
-        .map(key => typePatcher[key])
-        .reduce(
-          // Make sure all of the values are patcher-functions
-          (current, patcher) => current && typeof patcher === 'function',
-          true,
-        )
-    ) {
-      const table: JsonApiLink.TypePatcherTable = typePatcher;
-      this.typePatcher = (
-        data: any,
-        outerType: string,
-        patchDeeper: JsonApiLink.FunctionalTypePatcher,
-      ) => {
-        const __typename = data.__typename || outerType;
-        if (Array.isArray(data)) {
-          return data.map(d => patchDeeper(d, __typename, patchDeeper));
-        }
-        const subPatcher = table[__typename] || (result => result);
-        return {
-          __typename,
-          ...subPatcher(data, __typename, patchDeeper),
-        };
-      };
-    } else {
-      throw new Error(
-        'JsonApiLink was configured with a typePatcher of invalid type!',
       );
     }
 
@@ -1198,7 +1084,6 @@ export class JsonApiLink extends ApolloLink {
       fieldNameDenormalizer: this.fieldNameDenormalizer,
       mainDefinition,
       fragmentDefinitions,
-      typePatcher: this.typePatcher,
       serializers: this.serializers,
       responses: [],
     };
