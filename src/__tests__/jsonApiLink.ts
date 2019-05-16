@@ -2086,7 +2086,7 @@ describe('Mutation', () => {
       const link = new JsonApiLink({
         uri: '/api',
         fieldNameNormalizer: name => camelize(name),
-        fieldNameDenormalizer: decamelize,
+        fieldNameDenormalizer: name => decamelize(name),
       });
 
       const snakePost = { title_string: 'Love apollo', category_id: 6 };
