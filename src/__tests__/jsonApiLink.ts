@@ -1828,6 +1828,7 @@ describe('Mutation', () => {
           }
         }
       `;
+
       const response = await makePromise<Result>(
         execute(link, {
           operationName: 'republish',
@@ -1843,15 +1844,25 @@ describe('Mutation', () => {
       );
     });
 
-    it.skip('supports PATCH requests', async () => {
+    it('supports PATCH requests', async () => {
       expect.assertions(2);
 
       const link = new JsonApiLink({ uri: '/api' });
 
-      // the id in this hash simulates the server *assigning* an id for the new post
-      const post = { id: '1', title: 'Love apollo', categoryId: 6 };
+      const post = {
+        data: {
+          type: 'posts',
+          id: '1',
+          attributes: { title: 'Love apollo', categoryId: 6 },
+        },
+      };
       fetchMock.patch('/api/posts/1', post);
-      const resultPost = { __typename: 'Post', ...post };
+      const resultPost = {
+        __typename: 'Posts',
+        id: '1',
+        title: 'Love apollo',
+        categoryId: 6,
+      };
 
       const editPostMutation = gql`
         fragment PartialPostInput on REST {
@@ -1862,18 +1873,22 @@ describe('Mutation', () => {
 
         mutation editPost($id: ID!, $input: PartialPostInput!) {
           editedPost(id: $id, input: $input)
-            @jsonapi(type: "Post", path: "/posts/:id", method: "PATCH") {
+            @jsonapi(path: "/posts/{args.id}", method: "PATCH") {
             id
             title
             categoryId
           }
         }
       `;
+
       const response = await makePromise<Result>(
         execute(link, {
           operationName: 'editPost',
           query: editPostMutation,
-          variables: { id: post.id, input: { categoryId: post.categoryId } },
+          variables: {
+            id: post.data.id,
+            input: { categoryId: post.data.attributes.categoryId },
+          },
         }),
       );
       expect(response.data.editedPost).toEqual(resultPost);
@@ -1883,6 +1898,7 @@ describe('Mutation', () => {
         expect.objectContaining({ method: 'PATCH' }),
       );
     });
+
     it.skip('supports DELETE requests', async () => {
       expect.assertions(1);
 
