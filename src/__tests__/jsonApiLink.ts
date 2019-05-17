@@ -1763,15 +1763,17 @@ describe('Mutation', () => {
     afterEach(() => {
       fetchMock.restore();
     });
-    it.skip('supports POST requests', async () => {
+
+    it('supports POST requests', async () => {
       expect.assertions(2);
 
       const link = new JsonApiLink({ uri: '/api' });
 
-      // the id in this hash simulates the server *assigning* an id for the new post
-      const post = { id: '1', title: 'Love apollo' };
-      fetchMock.post('/api/posts/new', post);
-      const resultPost = { __typename: 'Post', ...post };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
+      fetchMock.post('/api/posts', post);
+      const resultPost = { __typename: 'Posts', id: '1', title: 'Love apollo' };
 
       const createPostMutation = gql`
         fragment PublishablePostInput on REST {
@@ -1780,7 +1782,7 @@ describe('Mutation', () => {
 
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @jsonapi(type: "Post", path: "/posts/new", method: "POST") {
+            @jsonapi(path: "/posts", method: "POST") {
             id
             title
           }
@@ -1790,16 +1792,17 @@ describe('Mutation', () => {
         execute(link, {
           operationName: 'publishPost',
           query: createPostMutation,
-          variables: { input: { title: post.title } },
+          variables: { input: { title: post.data.attributes.title } },
         }),
       );
       expect(response.data.publishedPost).toEqual(resultPost);
 
-      const requestCall = fetchMock.calls('/api/posts/new')[0];
+      const requestCall = fetchMock.calls('/api/posts')[0];
       expect(requestCall[1]).toEqual(
         expect.objectContaining({ method: 'POST' }),
       );
     });
+
     it.skip('supports PUT requests', async () => {
       expect.assertions(2);
 
