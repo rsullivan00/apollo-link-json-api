@@ -6,8 +6,7 @@ import { onError } from 'apollo-link-error';
 import gql, { disableFragmentWarnings } from 'graphql-tag';
 disableFragmentWarnings();
 
-import * as camelCase from 'camelcase';
-const snake_case = require('snake-case');
+import { camelize, decamelize } from 'humps';
 import * as fetchMock from 'fetch-mock';
 
 import {
@@ -132,10 +131,10 @@ describe('Configuration', async () => {
       expect.assertions(3);
       const link = new JsonApiLink({
         uri: '/api',
-        fieldNameNormalizer: camelCase,
+        fieldNameNormalizer: camelize,
       });
-      // "Server" returns TitleCased and snake_cased fields
-      // fieldNameNormalizer changes them to camelCase
+      // "Server" returns TitleCased and decamelized fields
+      // fieldNameNormalizer changes them to camelize
       const post = {
         data: { type: 'posts', id: '1', attributes: { Title: 'Love apollo' } },
       };
@@ -186,7 +185,7 @@ describe('Configuration', async () => {
       expect.assertions(2);
       const link = new JsonApiLink({
         uri: '/api',
-        fieldNameNormalizer: camelCase,
+        fieldNameNormalizer: camelize,
       });
       const post = {
         data: { type: 'posts', id: '1', attributes: { Title: 'Love apollo' } },
@@ -1764,15 +1763,17 @@ describe('Mutation', () => {
     afterEach(() => {
       fetchMock.restore();
     });
-    it.skip('supports POST requests', async () => {
+
+    it('supports POST requests', async () => {
       expect.assertions(2);
 
       const link = new JsonApiLink({ uri: '/api' });
 
-      // the id in this hash simulates the server *assigning* an id for the new post
-      const post = { id: '1', title: 'Love apollo' };
-      fetchMock.post('/api/posts/new', post);
-      const resultPost = { __typename: 'Post', ...post };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
+      fetchMock.post('/api/posts', post);
+      const resultPost = { __typename: 'Posts', id: '1', title: 'Love apollo' };
 
       const createPostMutation = gql`
         fragment PublishablePostInput on REST {
@@ -1781,7 +1782,7 @@ describe('Mutation', () => {
 
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @jsonapi(type: "Post", path: "/posts/new", method: "POST") {
+            @jsonapi(path: "/posts", method: "POST") {
             id
             title
           }
@@ -1791,25 +1792,27 @@ describe('Mutation', () => {
         execute(link, {
           operationName: 'publishPost',
           query: createPostMutation,
-          variables: { input: { title: post.title } },
+          variables: { input: { title: post.data.attributes.title } },
         }),
       );
       expect(response.data.publishedPost).toEqual(resultPost);
 
-      const requestCall = fetchMock.calls('/api/posts/new')[0];
+      const requestCall = fetchMock.calls('/api/posts')[0];
       expect(requestCall[1]).toEqual(
         expect.objectContaining({ method: 'POST' }),
       );
     });
-    it.skip('supports PUT requests', async () => {
+
+    it('supports PUT requests', async () => {
       expect.assertions(2);
 
       const link = new JsonApiLink({ uri: '/api' });
 
-      // the id in this hash simulates the server *assigning* an id for the new post
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
       fetchMock.put('/api/posts/1', post);
-      const resultPost = { __typename: 'Post', ...post };
+      const resultPost = { __typename: 'Posts', id: '1', title: 'Love apollo' };
 
       const replacePostMutation = gql`
         fragment ReplaceablePostInput on REST {
@@ -1819,17 +1822,18 @@ describe('Mutation', () => {
 
         mutation changePost($id: ID!, $input: ReplaceablePostInput!) {
           replacedPost(id: $id, input: $input)
-            @jsonapi(type: "Post", path: "/posts/:id", method: "PUT") {
+            @jsonapi(path: "/posts/{args.id}", method: "PUT") {
             id
             title
           }
         }
       `;
+
       const response = await makePromise<Result>(
         execute(link, {
           operationName: 'republish',
           query: replacePostMutation,
-          variables: { id: post.id, input: post },
+          variables: { id: post.data.id, input: post },
         }),
       );
       expect(response.data.replacedPost).toEqual(resultPost);
@@ -1839,15 +1843,26 @@ describe('Mutation', () => {
         expect.objectContaining({ method: 'PUT' }),
       );
     });
-    it.skip('supports PATCH requests', async () => {
+
+    it('supports PATCH requests', async () => {
       expect.assertions(2);
 
       const link = new JsonApiLink({ uri: '/api' });
 
-      // the id in this hash simulates the server *assigning* an id for the new post
-      const post = { id: '1', title: 'Love apollo', categoryId: 6 };
+      const post = {
+        data: {
+          type: 'posts',
+          id: '1',
+          attributes: { title: 'Love apollo', categoryId: 6 },
+        },
+      };
       fetchMock.patch('/api/posts/1', post);
-      const resultPost = { __typename: 'Post', ...post };
+      const resultPost = {
+        __typename: 'Posts',
+        id: '1',
+        title: 'Love apollo',
+        categoryId: 6,
+      };
 
       const editPostMutation = gql`
         fragment PartialPostInput on REST {
@@ -1858,18 +1873,22 @@ describe('Mutation', () => {
 
         mutation editPost($id: ID!, $input: PartialPostInput!) {
           editedPost(id: $id, input: $input)
-            @jsonapi(type: "Post", path: "/posts/:id", method: "PATCH") {
+            @jsonapi(path: "/posts/{args.id}", method: "PATCH") {
             id
             title
             categoryId
           }
         }
       `;
+
       const response = await makePromise<Result>(
         execute(link, {
           operationName: 'editPost',
           query: editPostMutation,
-          variables: { id: post.id, input: { categoryId: post.categoryId } },
+          variables: {
+            id: post.data.id,
+            input: { categoryId: post.data.attributes.categoryId },
+          },
         }),
       );
       expect(response.data.editedPost).toEqual(resultPost);
@@ -1879,19 +1898,18 @@ describe('Mutation', () => {
         expect.objectContaining({ method: 'PATCH' }),
       );
     });
-    it.skip('supports DELETE requests', async () => {
+
+    it('supports DELETE requests', async () => {
       expect.assertions(1);
 
       const link = new JsonApiLink({ uri: '/api' });
 
-      // the id in this hash simulates the server *assigning* an id for the new post
-      const post = { id: '1', title: 'Love apollo' };
-      fetchMock.delete('/api/posts/1', post);
+      fetchMock.delete('/api/posts/1', { status: 204 });
 
-      const replacePostMutation = gql`
+      const deletePostMutation = gql`
         mutation deletePost($id: ID!) {
           deletePostResponse(id: $id)
-            @jsonapi(type: "Post", path: "/posts/:id", method: "DELETE") {
+            @jsonapi(path: "/posts/{args.id}", method: "DELETE") {
             NoResponse
           }
         }
@@ -1899,8 +1917,8 @@ describe('Mutation', () => {
       await makePromise<Result>(
         execute(link, {
           operationName: 'deletePost',
-          query: replacePostMutation,
-          variables: { id: post.id },
+          query: deletePostMutation,
+          variables: { id: 1 },
         }),
       );
 
@@ -1930,10 +1948,6 @@ describe('Mutation', () => {
       });
 
       const createPostMutation = gql`
-        fragment PublishablePostInput on REST {
-          title: String
-        }
-
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
             @jsonapi(type: "Post", path: "/posts", method: "POST") {
@@ -1946,7 +1960,11 @@ describe('Mutation', () => {
         execute(link, {
           operationName: 'publishPost',
           query: createPostMutation,
-          variables: { input: { title: post.title } },
+          variables: {
+            input: {
+              data: { type: 'posts', attributes: { title: post.title } },
+            },
+          },
         }),
       );
 
@@ -1971,10 +1989,6 @@ describe('Mutation', () => {
       });
 
       const createPostMutation = gql`
-        fragment PublishablePostInput on REST {
-          title: String
-        }
-
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
             @jsonapi(type: "Post", path: "/posts", method: "POST") {
@@ -1988,7 +2002,11 @@ describe('Mutation', () => {
         execute(link, {
           operationName: 'publishPost',
           query: createPostMutation,
-          variables: { input: { title: post.title } },
+          variables: {
+            input: {
+              data: { type: 'posts', attributes: { title: post.title } },
+            },
+          },
         }),
       );
 
@@ -1999,7 +2017,7 @@ describe('Mutation', () => {
       });
     });
 
-    it.skip('returns an error on unsuccessful posts with zero Content-Length', async () => {
+    it('returns an error on unsuccessful posts with zero Content-Length', async () => {
       expect.assertions(1);
 
       const link = new JsonApiLink({ uri: '/api' });
@@ -2010,13 +2028,9 @@ describe('Mutation', () => {
       });
 
       const createPostMutation = gql`
-        fragment PublishablePostInput on REST {
-          title: String
-        }
-
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @jsonapi(type: "Post", path: "/posts", method: "POST") {
+            @jsonapi(path: "/posts", method: "POST") {
             title
           }
         }
@@ -2027,7 +2041,9 @@ describe('Mutation', () => {
           execute(link, {
             operationName: 'publishPost',
             query: createPostMutation,
-            variables: { input: { title: null } },
+            variables: {
+              input: { data: { type: 'posts', attributes: { title: null } } },
+            },
           }),
         );
       } catch (e) {
@@ -2036,116 +2052,124 @@ describe('Mutation', () => {
         );
       }
     });
-  });
 
-  it.skip('returns an error on zero Content-Length but status > 300', async () => {
-    expect.assertions(1);
+    it('returns an error on zero Content-Length but status > 300', async () => {
+      expect.assertions(1);
 
-    const link = new JsonApiLink({ uri: '/api' });
+      const link = new JsonApiLink({ uri: '/api' });
 
-    const post = { id: '1', title: 'Love apollo' };
-    fetchMock.post('/api/posts', {
-      headers: { 'Content-Length': 0 },
-      status: 500,
-      body: post,
-    });
+      const post = { id: '1', title: 'Love apollo' };
+      fetchMock.post('/api/posts', {
+        headers: { 'Content-Length': 0 },
+        status: 500,
+        body: post,
+      });
 
-    const createPostMutation = gql`
-      fragment PublishablePostInput on REST {
-        title: String
-      }
-
-      mutation publishPost($input: PublishablePostInput!) {
-        publishedPost(input: $input)
-          @jsonapi(type: "Post", path: "/posts", method: "POST") {
-          id
-          title
+      const createPostMutation = gql`
+        mutation publishPost($input: PublishablePostInput!) {
+          publishedPost(input: $input)
+            @jsonapi(path: "/posts", method: "POST") {
+            id
+            title
+          }
         }
-      }
-    `;
-    return await makePromise<Result>(
-      execute(link, {
-        operationName: 'publishPost',
-        query: createPostMutation,
-        variables: { input: { title: post.title } },
-      }),
-    ).catch(e =>
-      expect(e).toEqual(
-        new Error('Response not successful: Received status code 500'),
-      ),
-    );
+      `;
+      return await makePromise<Result>(
+        execute(link, {
+          operationName: 'publishPost',
+          query: createPostMutation,
+          variables: {
+            input: {
+              data: { type: 'posts', attributes: { title: post.title } },
+            },
+          },
+        }),
+      ).catch(e =>
+        expect(e).toEqual(
+          new Error('Response not successful: Received status code 500'),
+        ),
+      );
+    });
   });
 
   describe('fieldNameDenormalizer', () => {
     afterEach(() => {
       fetchMock.restore();
     });
-    it.skip('corrects names to snake_case for link-level denormalizer', async () => {
+
+    it('corrects names to decamelize for link-level denormalizer', async () => {
       expect.assertions(3);
 
       const link = new JsonApiLink({
         uri: '/api',
-        fieldNameNormalizer: camelCase,
-        fieldNameDenormalizer: snake_case,
+        fieldNameNormalizer: name => camelize(name),
+        fieldNameDenormalizer: name => decamelize(name),
       });
 
-      // the id in this hash simulates the server *assigning* an id for the new post
       const snakePost = { title_string: 'Love apollo', category_id: 6 };
+      fetchMock.post('/api/posts', {
+        data: {
+          id: '1',
+          type: 'posts',
+          attributes: snakePost,
+        },
+      });
       const camelPost = { titleString: 'Love apollo', categoryId: 6 };
-      fetchMock.post('/api/posts/new', { id: 1, ...snakePost });
-      const intermediatePost = snakePost;
-      const resultPost = { ...camelPost, id: 1 };
 
       const createPostMutation = gql`
-        fragment PublishablePostInput on REST {
-          titleString: String
-          categoryId: Number
-        }
-
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @jsonapi(type: "Post", path: "/posts/new", method: "POST") {
+            @jsonapi(path: "/posts", method: "POST") {
             id
             titleString
             categoryId
           }
         }
       `;
+
       const response = await makePromise<Result>(
         execute(link, {
           operationName: 'publishPost',
           query: createPostMutation,
-          variables: { input: camelPost },
+          variables: {
+            input: { data: { type: 'posts', attributes: camelPost } },
+          },
         }),
       );
 
-      const requestCall = fetchMock.calls('/api/posts/new')[0];
+      const requestCall = fetchMock.calls('/api/posts')[0];
 
       expect(requestCall[1]).toEqual(
         expect.objectContaining({
           method: 'POST',
         }),
       );
-      expect(JSON.parse(requestCall[1].body)).toMatchObject(intermediatePost);
+      expect(JSON.parse(requestCall[1].body)).toMatchObject({
+        data: {
+          type: 'posts',
+          attributes: snakePost,
+        },
+      });
 
       expect(response.data.publishedPost).toEqual(
-        expect.objectContaining(resultPost),
+        expect.objectContaining({ ...camelPost, id: '1', __typename: 'Posts' }),
       );
     });
-    it.skip('corrects names to snake_case for request-level denormalizer', async () => {
+
+    it('corrects names to decamelize for request-level denormalizer', async () => {
       expect.assertions(3);
 
       const link = new JsonApiLink({
         uri: '/api',
-        fieldNameNormalizer: camelCase,
+        fieldNameNormalizer: camelize,
       });
 
-      // the id in this hash simulates the server *assigning* an id for the new post
       const snakePost = { title_string: 'Love apollo', category_id: 6 };
       const camelPost = { titleString: 'Love apollo', categoryId: 6 };
-      fetchMock.post('/api/posts/new', { id: 1, ...snakePost });
-      const intermediatePost = snakePost;
-      const resultPost = { ...camelPost, id: 1 };
+      fetchMock.post('/api/posts', {
+        data: { type: 'posts', id: 1, attributes: snakePost },
+      });
+      const resultPost = { __typename: 'Posts', id: 1, ...camelPost };
 
       const createPostMutation = gql`
         fragment PublishablePostInput on REST {
@@ -2156,8 +2180,7 @@ describe('Mutation', () => {
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
             @jsonapi(
-              type: "Post"
-              path: "/posts/new"
+              path: "/posts"
               method: "POST"
               fieldNameDenormalizer: $requestLevelDenormalizer
             ) {
@@ -2167,28 +2190,38 @@ describe('Mutation', () => {
           }
         }
       `;
+
       const response = await makePromise<Result>(
         execute(link, {
           operationName: 'publishPost',
           query: createPostMutation,
-          variables: { input: camelPost, requestLevelDenormalizer: snake_case },
+          variables: {
+            input: { data: { type: 'posts', attributes: camelPost } },
+            requestLevelDenormalizer: decamelize,
+          },
         }),
       );
 
-      const requestCall = fetchMock.calls('/api/posts/new')[0];
+      const requestCall = fetchMock.calls('/api/posts')[0];
 
       expect(requestCall[1]).toEqual(
         expect.objectContaining({
           method: 'POST',
         }),
       );
-      expect(JSON.parse(requestCall[1].body)).toMatchObject(intermediatePost);
+      expect(JSON.parse(requestCall[1].body)).toMatchObject({
+        data: {
+          type: 'posts',
+          attributes: snakePost,
+        },
+      });
 
       expect(response.data.publishedPost).toEqual(
         expect.objectContaining(resultPost),
       );
     });
   });
+
   describe('bodyKey/bodyBuilder', () => {
     afterEach(() => {
       fetchMock.restore();
