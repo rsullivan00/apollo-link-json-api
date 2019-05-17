@@ -3,7 +3,8 @@
 
 ## Purpose
 
-An Apollo Link to easily use GraphQL with a JSON API compliant server.
+An Apollo Link to easily use GraphQL with a [JSON API](https://jsonapi.org/)
+compliant server.
 
 ## Installation
 
@@ -12,7 +13,7 @@ An Apollo Link to easily use GraphQL with a JSON API compliant server.
 npm install apollo-link-json-api apollo-link graphql graphql-anywhere qs --save # or `yarn add apollo-link-rest apollo-link graphql graphql-anywhere qs`
 ```
 
-`apollo-link`, `graphql`, `qs` and `graphql-anywhere` are peer dependencies needed by `apollo-link-json-api`.
+`apollo-link`, `graphql`, `qs`, `humps`, and `graphql-anywhere` are peer dependencies needed by `apollo-link-json-api`.
 
 ## Usage
 
@@ -38,7 +39,7 @@ const client = new ApolloClient({
 // A simple query to retrieve data about the first author
 const query = gql`
   query firstAuthor {
-    author @jsonApi(path: "authors/1") {
+    author @jsonapi(path: "authors/1") {
       name
     }
   }
@@ -48,6 +49,108 @@ const query = gql`
 client.query({ query }).then(response => {
   console.log(response.data.name);
 });
+```
+
+### Advanced Querying
+
+JSON API Link supports [unpacking related resources](https://jsonapi.org/format/#document-compound-documents)
+into a friendlier GraphQL query structure.
+
+```js
+const query = gql`
+  query firstAuthor {
+    author @jsonapi(path: "authors/1?include=series,series.books") {
+      name
+      series {
+        title
+        books {
+          title
+        }
+      }
+    }
+  }
+`;
+
+```
+
+While JSON API Link does support running multiple nested queries, prefer
+sideloading resources in a single request by using the `?include` parameter if
+your JSON API server supports it.
+
+```js
+// Avoid this
+const badQuery = gql`
+  query firstAuthor {
+    author @jsonapi(path: "authors/1") {
+      name
+      series @jsonapi(path: "authors/1/series") {
+        title
+      }
+    }
+  }
+`;
+
+// Prefer this
+const query = gql`
+  query firstAuthor {
+    author @jsonapi(path: "authors/1?include=series") {
+      name
+      series {
+        title
+      }
+    }
+  }
+`;
+```
+
+### Mutations
+
+```js
+import React from 'react'
+import gql from 'graphql-tag'
+import { Mutation } from 'react-apollo'
+
+export const UPDATE_BOOK_TITLE = gql`
+  mutation UpdateBookTitle($input: UpdateBookTitleInput!) {
+    book(input: $input) @jsonapi(path: "/books/{args.input.data.id}", method: "PATCH") {
+      title
+    }
+  }
+`
+
+const UpdateBookTitleButton = ({ videoId, children }) => (
+  <Mutation
+    mutation={UPDATE_BOOK_TITLE}
+    update={(store, { data: { book } }) => {
+      // Update your Apollo cache with result
+      console.log(book.title)
+    }}
+  >
+    {mutate => (
+      <button onClick={() => 
+        mutate({
+          variables: {
+            input: {
+              data: {
+                id: bookId,
+                type: 'books',
+                attributes: { title: 'Changed title!' }
+              }
+            }
+          },
+          optimisticResponse: {
+            book: {
+              __typename: 'Books',
+              title: 'Changed title!'
+            }
+          }
+        })
+        }>
+        Update your book title!
+        </button>
+    )}
+  </Mutation>
+)
 ```
 
 ## Options
