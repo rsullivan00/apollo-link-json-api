@@ -2158,7 +2158,7 @@ describe('Mutation', () => {
       );
     });
 
-    it.skip('corrects names to decamelize for request-level denormalizer', async () => {
+    it('corrects names to decamelize for request-level denormalizer', async () => {
       expect.assertions(3);
 
       const link = new JsonApiLink({
@@ -2166,12 +2166,12 @@ describe('Mutation', () => {
         fieldNameNormalizer: camelize,
       });
 
-      // the id in this hash simulates the server *assigning* an id for the new post
       const snakePost = { title_string: 'Love apollo', category_id: 6 };
       const camelPost = { titleString: 'Love apollo', categoryId: 6 };
-      fetchMock.post('/api/posts/new', { id: 1, ...snakePost });
-      const intermediatePost = snakePost;
-      const resultPost = { ...camelPost, id: 1 };
+      fetchMock.post('/api/posts', {
+        data: { type: 'posts', id: 1, attributes: snakePost },
+      });
+      const resultPost = { __typename: 'Posts', id: 1, ...camelPost };
 
       const createPostMutation = gql`
         fragment PublishablePostInput on REST {
@@ -2182,8 +2182,7 @@ describe('Mutation', () => {
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
             @jsonapi(
-              type: "Post"
-              path: "/posts/new"
+              path: "/posts"
               method: "POST"
               fieldNameDenormalizer: $requestLevelDenormalizer
             ) {
@@ -2193,28 +2192,38 @@ describe('Mutation', () => {
           }
         }
       `;
+
       const response = await makePromise<Result>(
         execute(link, {
           operationName: 'publishPost',
           query: createPostMutation,
-          variables: { input: camelPost, requestLevelDenormalizer: decamelize },
+          variables: {
+            input: { data: { type: 'posts', attributes: camelPost } },
+            requestLevelDenormalizer: decamelize,
+          },
         }),
       );
 
-      const requestCall = fetchMock.calls('/api/posts/new')[0];
+      const requestCall = fetchMock.calls('/api/posts')[0];
 
       expect(requestCall[1]).toEqual(
         expect.objectContaining({
           method: 'POST',
         }),
       );
-      expect(JSON.parse(requestCall[1].body)).toMatchObject(intermediatePost);
+      expect(JSON.parse(requestCall[1].body)).toMatchObject({
+        data: {
+          type: 'posts',
+          attributes: snakePost,
+        },
+      });
 
       expect(response.data.publishedPost).toEqual(
         expect.objectContaining(resultPost),
       );
     });
   });
+
   describe('bodyKey/bodyBuilder', () => {
     afterEach(() => {
       fetchMock.restore();
