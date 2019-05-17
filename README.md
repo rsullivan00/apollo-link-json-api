@@ -6,11 +6,19 @@
 An Apollo Link to easily use GraphQL with a [JSON API](https://jsonapi.org/)
 compliant server.
 
+Built on top of
+[`apollo-link-rest`](https://github.com/apollographql/apollo-link-rest/). If you
+have a non-JSON API REST service, check that out as an alternative.
+
 ## Installation
 
 
 ```bash
-npm install apollo-link-json-api apollo-link graphql graphql-anywhere qs --save # or `yarn add apollo-link-rest apollo-link graphql graphql-anywhere qs`
+npm install apollo-link-json-api apollo-link graphql graphql-anywhere qs humps --save
+
+# or
+
+yarn add apollo-link-json-api apollo-link graphql graphql-anywhere qs humps
 ```
 
 `apollo-link`, `graphql`, `qs`, `humps`, and `graphql-anywhere` are peer dependencies needed by `apollo-link-json-api`.
@@ -118,7 +126,7 @@ export const UPDATE_BOOK_TITLE = gql`
   }
 `
 
-const UpdateBookTitleButton = ({ videoId, children }) => (
+const UpdateBookTitleButton = ({ bookId }) => (
   <Mutation
     mutation={UPDATE_BOOK_TITLE}
     update={(store, { data: { book } }) => {
@@ -159,10 +167,11 @@ JSON API Link takes an object with some options on it to customize the behavior 
 
 - `uri`: the URI key is a string endpoint (optional when `endpoints` provides a default)
 - `endpoints`: root endpoint (uri) to apply paths to or a map of endpoints
-- `customFetch`: a custom `fetch` to handle REST calls
+- `customFetch`: a custom `fetch` to handle API calls
 - `headers`: an object representing values to be sent as headers on the request
 - `credentials`: a string representing the credentials policy you want for the fetch call
 - `fieldNameNormalizer`: function that takes the response field name and converts it into a GraphQL compliant name
+- `fieldNameDenormalizer`: function that takes the JavaScript object key name and converts it into a JSON API compliant name
 
 ## Context
 
