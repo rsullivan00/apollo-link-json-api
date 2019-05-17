@@ -1973,18 +1973,97 @@ describe('Mutation', () => {
         id: null,
         title: null,
       });
+
+      it.skip('returns an empty object on successful posts with zero Content-Length', async () => {
+        // In Node.js parsing an empty body doesn't throw an error, so the best test is
+        // to provide body data and ensure the zero length still triggers the empty response
+        expect.assertions(1);
+
+        const link = new JsonApiLink({ uri: '/api' });
+        const post = { id: '1', title: 'Love apollo' };
+
+        fetchMock.post('/api/posts', {
+          headers: { 'Content-Length': 0 },
+          body: post,
+        });
+
+        const createPostMutation = gql`
+          fragment PublishablePostInput on REST {
+            title: String
+          }
+
+          mutation publishPost($input: PublishablePostInput!) {
+            publishedPost(input: $input)
+              @jsonapi(type: "Post", path: "/posts", method: "POST") {
+              id
+              title
+            }
+          }
+        `;
+
+        const response = await makePromise<Result>(
+          execute(link, {
+            operationName: 'publishPost',
+            query: createPostMutation,
+            variables: { input: { title: post.title } },
+          }),
+        );
+
+        expect(response.data.publishedPost).toEqual({
+          __typename: 'Post',
+          id: null,
+          title: null,
+        });
+      });
+
+      it('returns an error on unsuccessful posts with zero Content-Length', async () => {
+        expect.assertions(1);
+
+        const link = new JsonApiLink({ uri: '/api' });
+
+        fetchMock.post('/api/posts', {
+          headers: { 'Content-Length': 0 },
+          status: 400,
+        });
+
+        const createPostMutation = gql`
+          fragment PublishablePostInput on REST {
+            title: String
+          }
+
+          mutation publishPost($input: PublishablePostInput!) {
+            publishedPost(input: $input)
+              @jsonapi(path: "/posts", method: "POST") {
+              title
+            }
+          }
+        `;
+
+        try {
+          await makePromise<Result>(
+            execute(link, {
+              operationName: 'publishPost',
+              query: createPostMutation,
+              variables: { input: { title: null } },
+            }),
+          );
+        } catch (e) {
+          expect(e).toEqual(
+            new Error('Response not successful: Received status code 400'),
+          );
+        }
+      });
     });
 
-    it.skip('returns an empty object on successful posts with zero Content-Length', async () => {
-      // In Node.js parsing an empty body doesn't throw an error, so the best test is
-      // to provide body data and ensure the zero length still triggers the empty response
+    it('returns an error on zero Content-Length but status > 300', async () => {
       expect.assertions(1);
 
       const link = new JsonApiLink({ uri: '/api' });
-      const post = { id: '1', title: 'Love apollo' };
 
+      const post = { id: '1', title: 'Love apollo' };
       fetchMock.post('/api/posts', {
         headers: { 'Content-Length': 0 },
+        status: 500,
         body: post,
       });
 
@@ -1995,103 +2074,24 @@ describe('Mutation', () => {
 
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
-            @jsonapi(type: "Post", path: "/posts", method: "POST") {
+            @jsonapi(path: "/posts", method: "POST") {
             id
             title
           }
         }
       `;
-
-      const response = await makePromise<Result>(
+      return await makePromise<Result>(
         execute(link, {
           operationName: 'publishPost',
           query: createPostMutation,
           variables: { input: { title: post.title } },
         }),
-      );
-
-      expect(response.data.publishedPost).toEqual({
-        __typename: 'Post',
-        id: null,
-        title: null,
-      });
-    });
-
-    it.skip('returns an error on unsuccessful posts with zero Content-Length', async () => {
-      expect.assertions(1);
-
-      const link = new JsonApiLink({ uri: '/api' });
-
-      fetchMock.post('/api/posts', {
-        headers: { 'Content-Length': 0 },
-        status: 400,
-      });
-
-      const createPostMutation = gql`
-        fragment PublishablePostInput on REST {
-          title: String
-        }
-
-        mutation publishPost($input: PublishablePostInput!) {
-          publishedPost(input: $input)
-            @jsonapi(type: "Post", path: "/posts", method: "POST") {
-            title
-          }
-        }
-      `;
-
-      try {
-        await makePromise<Result>(
-          execute(link, {
-            operationName: 'publishPost',
-            query: createPostMutation,
-            variables: { input: { title: null } },
-          }),
-        );
-      } catch (e) {
+      ).catch(e =>
         expect(e).toEqual(
-          new Error('Response not successful: Received status code 400'),
-        );
-      }
+          new Error('Response not successful: Received status code 500'),
+        ),
+      );
     });
-  });
-
-  it.skip('returns an error on zero Content-Length but status > 300', async () => {
-    expect.assertions(1);
-
-    const link = new JsonApiLink({ uri: '/api' });
-
-    const post = { id: '1', title: 'Love apollo' };
-    fetchMock.post('/api/posts', {
-      headers: { 'Content-Length': 0 },
-      status: 500,
-      body: post,
-    });
-
-    const createPostMutation = gql`
-      fragment PublishablePostInput on REST {
-        title: String
-      }
-
-      mutation publishPost($input: PublishablePostInput!) {
-        publishedPost(input: $input)
-          @jsonapi(type: "Post", path: "/posts", method: "POST") {
-          id
-          title
-        }
-      }
-    `;
-    return await makePromise<Result>(
-      execute(link, {
-        operationName: 'publishPost',
-        query: createPostMutation,
-        variables: { input: { title: post.title } },
-      }),
-    ).catch(e =>
-      expect(e).toEqual(
-        new Error('Response not successful: Received status code 500'),
-      ),
-    );
   });
 
   describe('fieldNameDenormalizer', () => {
