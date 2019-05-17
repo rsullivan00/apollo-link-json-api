@@ -14,7 +14,11 @@ have a non-JSON API REST service, check that out as an alternative.
 
 
 ```bash
-npm install apollo-link-json-api apollo-link graphql graphql-anywhere qs --save # or `yarn add apollo-link-json-api apollo-link graphql graphql-anywhere qs`
+npm install apollo-link-json-api apollo-link graphql graphql-anywhere qs humps --save
+
+# or
+
+yarn add apollo-link-json-api apollo-link graphql graphql-anywhere qs humps
 ```
 
 `apollo-link`, `graphql`, `qs`, `humps`, and `graphql-anywhere` are peer dependencies needed by `apollo-link-json-api`.
