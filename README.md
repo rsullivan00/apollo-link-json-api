@@ -122,7 +122,7 @@ export const UPDATE_BOOK_TITLE = gql`
   }
 `
 
-const UpdateBookTitleButton = ({ videoId, children }) => (
+const UpdateBookTitleButton = ({ bookId }) => (
   <Mutation
     mutation={UPDATE_BOOK_TITLE}
     update={(store, { data: { book } }) => {
