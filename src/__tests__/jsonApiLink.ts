@@ -1803,15 +1803,16 @@ describe('Mutation', () => {
       );
     });
 
-    it.skip('supports PUT requests', async () => {
+    it('supports PUT requests', async () => {
       expect.assertions(2);
 
       const link = new JsonApiLink({ uri: '/api' });
 
-      // the id in this hash simulates the server *assigning* an id for the new post
-      const post = { id: '1', title: 'Love apollo' };
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
+      };
       fetchMock.put('/api/posts/1', post);
-      const resultPost = { __typename: 'Post', ...post };
+      const resultPost = { __typename: 'Posts', id: '1', title: 'Love apollo' };
 
       const replacePostMutation = gql`
         fragment ReplaceablePostInput on REST {
@@ -1821,7 +1822,7 @@ describe('Mutation', () => {
 
         mutation changePost($id: ID!, $input: ReplaceablePostInput!) {
           replacedPost(id: $id, input: $input)
-            @jsonapi(type: "Post", path: "/posts/:id", method: "PUT") {
+            @jsonapi(path: "/posts/{args.id}", method: "PUT") {
             id
             title
           }
@@ -1831,7 +1832,7 @@ describe('Mutation', () => {
         execute(link, {
           operationName: 'republish',
           query: replacePostMutation,
-          variables: { id: post.id, input: post },
+          variables: { id: post.data.id, input: post },
         }),
       );
       expect(response.data.replacedPost).toEqual(resultPost);
@@ -1841,6 +1842,7 @@ describe('Mutation', () => {
         expect.objectContaining({ method: 'PUT' }),
       );
     });
+
     it.skip('supports PATCH requests', async () => {
       expect.assertions(2);
 
