@@ -1948,10 +1948,6 @@ describe('Mutation', () => {
       });
 
       const createPostMutation = gql`
-        fragment PublishablePostInput on REST {
-          title: String
-        }
-
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
             @jsonapi(type: "Post", path: "/posts", method: "POST") {
@@ -1964,7 +1960,11 @@ describe('Mutation', () => {
         execute(link, {
           operationName: 'publishPost',
           query: createPostMutation,
-          variables: { input: { title: post.title } },
+          variables: {
+            input: {
+              data: { type: 'posts', attributes: { title: post.title } },
+            },
+          },
         }),
       );
 
@@ -1989,10 +1989,6 @@ describe('Mutation', () => {
       });
 
       const createPostMutation = gql`
-        fragment PublishablePostInput on REST {
-          title: String
-        }
-
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
             @jsonapi(type: "Post", path: "/posts", method: "POST") {
@@ -2006,7 +2002,11 @@ describe('Mutation', () => {
         execute(link, {
           operationName: 'publishPost',
           query: createPostMutation,
-          variables: { input: { title: post.title } },
+          variables: {
+            input: {
+              data: { type: 'posts', attributes: { title: post.title } },
+            },
+          },
         }),
       );
 
@@ -2028,10 +2028,6 @@ describe('Mutation', () => {
       });
 
       const createPostMutation = gql`
-        fragment PublishablePostInput on REST {
-          title: String
-        }
-
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
             @jsonapi(path: "/posts", method: "POST") {
@@ -2045,7 +2041,9 @@ describe('Mutation', () => {
           execute(link, {
             operationName: 'publishPost',
             query: createPostMutation,
-            variables: { input: { title: null } },
+            variables: {
+              input: { data: { type: 'posts', attributes: { title: null } } },
+            },
           }),
         );
       } catch (e) {
@@ -2068,10 +2066,6 @@ describe('Mutation', () => {
       });
 
       const createPostMutation = gql`
-        fragment PublishablePostInput on REST {
-          title: String
-        }
-
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
             @jsonapi(path: "/posts", method: "POST") {
@@ -2084,7 +2078,11 @@ describe('Mutation', () => {
         execute(link, {
           operationName: 'publishPost',
           query: createPostMutation,
-          variables: { input: { title: post.title } },
+          variables: {
+            input: {
+              data: { type: 'posts', attributes: { title: post.title } },
+            },
+          },
         }),
       ).catch(e =>
         expect(e).toEqual(
