@@ -1899,19 +1899,17 @@ describe('Mutation', () => {
       );
     });
 
-    it.skip('supports DELETE requests', async () => {
+    it('supports DELETE requests', async () => {
       expect.assertions(1);
 
       const link = new JsonApiLink({ uri: '/api' });
 
-      // the id in this hash simulates the server *assigning* an id for the new post
-      const post = { id: '1', title: 'Love apollo' };
-      fetchMock.delete('/api/posts/1', post);
+      fetchMock.delete('/api/posts/1', { status: 204 });
 
-      const replacePostMutation = gql`
+      const deletePostMutation = gql`
         mutation deletePost($id: ID!) {
           deletePostResponse(id: $id)
-            @jsonapi(type: "Post", path: "/posts/:id", method: "DELETE") {
+            @jsonapi(path: "/posts/{args.id}", method: "DELETE") {
             NoResponse
           }
         }
@@ -1919,8 +1917,8 @@ describe('Mutation', () => {
       await makePromise<Result>(
         execute(link, {
           operationName: 'deletePost',
-          query: replacePostMutation,
-          variables: { id: post.id },
+          query: deletePostMutation,
+          variables: { id: 1 },
         }),
       );
 
