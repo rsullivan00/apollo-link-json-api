@@ -1,5 +1,5 @@
-import { pascalize } from 'humps';
 import { mapObject } from './utils';
+import { JsonApiLink } from './jsonApiLink';
 
 interface ResourceIdentifier {
   id: string;
@@ -30,11 +30,6 @@ interface JsonApiBody {
   data: Resource | Array<Resource>;
   included?: Array<Resource> | undefined;
 }
-
-const typenameResource = (resource: Resource) => ({
-  __typename: pascalize(resource.type),
-  ...resource,
-});
 
 const flattenResource = ({
   attributes,
@@ -134,11 +129,21 @@ const applyToIncluded = fn => ({ included, ...rest }: JsonApiBody) => {
   return { included: included.map(obj => fn(obj, rest)), ...rest };
 };
 
-const jsonapiResponseTransformer = async (response: Response) =>
+const applyNormalizer = (normalizer: JsonApiLink.TypeNameNormalizer) => (
+  resource: Resource,
+) => ({
+  __typename: normalizer(resource.type),
+  ...resource,
+});
+
+const jsonapiResponseTransformer = async (
+  response: Response,
+  typeNameNormalizer: JsonApiLink.TypeNameNormalizer,
+) =>
   response
     .json()
-    .then(applyToIncluded(typenameResource))
-    .then(applyToData(typenameResource))
+    .then(applyToIncluded(applyNormalizer(typeNameNormalizer)))
+    .then(applyToData(applyNormalizer(typeNameNormalizer)))
     .then(applyToData(denormalizeRelationships))
     .then(applyToData(flattenResource))
     .then(({ data, included }) => data);

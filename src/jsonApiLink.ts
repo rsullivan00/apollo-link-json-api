@@ -31,7 +31,7 @@ import { graphql } from 'graphql-anywhere/lib/async';
 import { Resolver, ExecInfo } from 'graphql-anywhere';
 
 import * as qs from 'qs';
-import { removeRestSetsFromDocument } from './utils';
+import { removeRestSetsFromDocument, identity } from './utils';
 
 export namespace JsonApiLink {
   export type URI = string;
@@ -53,6 +53,10 @@ export namespace JsonApiLink {
   export type InitializationHeaders = HeadersHash | Headers | string[][];
 
   export type HeadersMergePolicy = (...headerGroups: Headers[]) => Headers;
+
+  export interface TypeNameNormalizer {
+    (typeName: string): string;
+  }
 
   export interface FieldNameNormalizer {
     (fieldName: string, keypath?: string[]): string;
@@ -120,6 +124,11 @@ export namespace JsonApiLink {
      * An object representing values to be sent as headers on the request.
      */
     headers?: InitializationHeaders;
+
+    /**
+     * A function that takes the JSON API `type` and converts it to a GraphQL compliant `__typename`
+     */
+    typeNameNormalizer?: TypeNameNormalizer;
 
     /**
      * A function that takes the response field name and converts it into a GraphQL compliant name
@@ -711,6 +720,7 @@ interface RequestContext {
   endpoints: JsonApiLink.Endpoints;
   customFetch: JsonApiLink.CustomFetch;
   operationType: OperationTypeNode;
+  typeNameNormalizer: JsonApiLink.TypeNameNormalizer;
   fieldNameNormalizer: JsonApiLink.FieldNameNormalizer;
   fieldNameDenormalizer: JsonApiLink.FieldNameNormalizer;
   mainDefinition: OperationDefinitionNode | FragmentDefinitionNode;
@@ -792,6 +802,7 @@ const resolver: Resolver = async (
     operationType,
     mainDefinition,
     fragmentDefinitions,
+    typeNameNormalizer,
     fieldNameNormalizer,
     fieldNameDenormalizer: linkLevelNameDenormalizer,
     serializers,
@@ -883,7 +894,7 @@ const resolver: Resolver = async (
       result = {};
     } else {
       try {
-        result = await jsonApiTransformer(response);
+        result = await jsonApiTransformer(response, typeNameNormalizer);
       } catch (err) {
         console.warn('An error occurred in jsonApiTransformer:');
         throw err;
@@ -956,6 +967,7 @@ const DEFAULT_JSON_SERIALIZER: JsonApiLink.Serializer = (
 export class JsonApiLink extends ApolloLink {
   private readonly endpoints: JsonApiLink.Endpoints;
   private readonly headers: Headers;
+  private readonly typeNameNormalizer: JsonApiLink.TypeNameNormalizer;
   private readonly fieldNameNormalizer: JsonApiLink.FieldNameNormalizer;
   private readonly fieldNameDenormalizer: JsonApiLink.FieldNameNormalizer;
   private readonly credentials: RequestCredentials;
@@ -966,6 +978,7 @@ export class JsonApiLink extends ApolloLink {
     uri,
     endpoints,
     headers,
+    typeNameNormalizer,
     fieldNameNormalizer,
     fieldNameDenormalizer,
     customFetch,
@@ -1008,6 +1021,7 @@ export class JsonApiLink extends ApolloLink {
       );
     }
 
+    this.typeNameNormalizer = typeNameNormalizer || identity;
     this.fieldNameNormalizer = fieldNameNormalizer || null;
     this.fieldNameDenormalizer = fieldNameDenormalizer || null;
     this.headers = normalizeHeaders(headers);
@@ -1074,6 +1088,7 @@ export class JsonApiLink extends ApolloLink {
       credentials,
       customFetch: this.customFetch,
       operationType,
+      typeNameNormalizer: this.typeNameNormalizer,
       fieldNameNormalizer: this.fieldNameNormalizer,
       fieldNameDenormalizer: this.fieldNameDenormalizer,
       mainDefinition,
