@@ -148,7 +148,7 @@ const UpdateBookTitleButton = ({ bookId }) => (
           },
           optimisticResponse: {
             book: {
-              __typename: 'Books',
+              __typename: 'books',
               title: 'Changed title!'
             }
           }
@@ -172,6 +172,8 @@ JSON API Link takes an object with some options on it to customize the behavior 
 - `credentials`: a string representing the credentials policy you want for the fetch call
 - `fieldNameNormalizer`: function that takes the response field name and converts it into a GraphQL compliant name
 - `fieldNameDenormalizer`: function that takes the JavaScript object key name and converts it into a JSON API compliant name
+- `typeNameNormalizer`: function that takes the JSON API resource type and
+    converts it to a GraphQL `__typename`.
 
 ## Context
 
