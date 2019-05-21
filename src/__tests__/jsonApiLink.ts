@@ -6,7 +6,7 @@ import { onError } from 'apollo-link-error';
 import gql, { disableFragmentWarnings } from 'graphql-tag';
 disableFragmentWarnings();
 
-import { camelize, decamelize } from 'humps';
+import { camelize, decamelize, pascalize } from 'humps';
 import * as fetchMock from 'fetch-mock';
 
 import {
@@ -188,9 +188,13 @@ describe('Configuration', async () => {
         fieldNameNormalizer: camelize,
       });
       const post = {
-        data: { type: 'posts', id: '1', attributes: { Title: 'Love apollo' } },
+        data: {
+          type: 'super_posts',
+          id: '1',
+          attributes: { Title: 'Love apollo' },
+        },
       };
-      fetchMock.get('/api/post/1', post);
+      fetchMock.get('/api/posts/1', post);
 
       const tags = {
         data: [
@@ -202,7 +206,7 @@ describe('Configuration', async () => {
 
       const postAndTags = gql`
         query postAndTags {
-          post @jsonapi(path: "/post/1") {
+          post @jsonapi(path: "/posts/1") {
             __typename
             id
             title
@@ -221,7 +225,63 @@ describe('Configuration', async () => {
       );
 
       expect(data.post.__typename).toBeDefined();
-      expect(data.post.__typename).toEqual('Posts');
+      expect(data.post.__typename).toEqual('super_posts');
+    });
+  });
+
+  describe('typeNameNormalizer', async () => {
+    afterEach(() => {
+      fetchMock.restore();
+    });
+
+    it('should apply typeNameNormalizer if specified', async () => {
+      expect.assertions(2);
+      const link = new JsonApiLink({
+        uri: '/api',
+        typeNameNormalizer: type => `My${pascalize(type)}`,
+      });
+      const post = {
+        data: { type: 'posts', id: '1', attributes: { Title: 'Love apollo' } },
+      };
+      fetchMock.get('/api/post/1', post);
+
+      const tags = {
+        data: [
+          {
+            type: 'tags',
+            id: '1',
+            attributes: { Name: 'apollo', tag_description: 'once' },
+          },
+          {
+            type: 'tags',
+            id: '2',
+            attributes: { Name: 'graphql', tag_description: 'twice' },
+          },
+        ],
+      };
+      fetchMock.get('/api/tags', tags);
+
+      const postAndTags = gql`
+        query postAndTags {
+          post @jsonapi(path: "/post/1") {
+            id
+            title
+            tags @jsonapi(path: "/tags") {
+              name
+            }
+          }
+        }
+      `;
+
+      const { data } = await makePromise<Result>(
+        execute(link, {
+          operationName: 'postTitle',
+          query: postAndTags,
+        }),
+      );
+
+      expect(data.post.__typename).toEqual('MyPosts');
+      expect(data.post.tags[0].__typename).toEqual('MyTags');
     });
   });
 
@@ -342,7 +402,7 @@ describe('Query single call', () => {
         id: '1',
         type: 'posts',
         title: 'Love apollo',
-        __typename: 'Posts',
+        __typename: 'posts',
       },
     });
   });
@@ -375,8 +435,8 @@ describe('Query single call', () => {
 
     expect(data).toMatchObject({
       tags: [
-        { name: 'apollo', __typename: 'Tags' },
-        { name: 'graphql', __typename: 'Tags' },
+        { name: 'apollo', __typename: 'tags' },
+        { name: 'graphql', __typename: 'tags' },
       ],
     });
   });
@@ -1773,7 +1833,7 @@ describe('Mutation', () => {
         data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
       };
       fetchMock.post('/api/posts', post);
-      const resultPost = { __typename: 'Posts', id: '1', title: 'Love apollo' };
+      const resultPost = { __typename: 'posts', id: '1', title: 'Love apollo' };
 
       const createPostMutation = gql`
         fragment PublishablePostInput on REST {
@@ -1812,7 +1872,7 @@ describe('Mutation', () => {
         data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
       };
       fetchMock.put('/api/posts/1', post);
-      const resultPost = { __typename: 'Posts', id: '1', title: 'Love apollo' };
+      const resultPost = { __typename: 'posts', id: '1', title: 'Love apollo' };
 
       const replacePostMutation = gql`
         fragment ReplaceablePostInput on REST {
@@ -1858,7 +1918,7 @@ describe('Mutation', () => {
       };
       fetchMock.patch('/api/posts/1', post);
       const resultPost = {
-        __typename: 'Posts',
+        __typename: 'posts',
         id: '1',
         title: 'Love apollo',
         categoryId: 6,
@@ -2152,7 +2212,7 @@ describe('Mutation', () => {
       });
 
       expect(response.data.publishedPost).toEqual(
-        expect.objectContaining({ ...camelPost, id: '1', __typename: 'Posts' }),
+        expect.objectContaining({ ...camelPost, id: '1', __typename: 'posts' }),
       );
     });
 
@@ -2169,7 +2229,7 @@ describe('Mutation', () => {
       fetchMock.post('/api/posts', {
         data: { type: 'posts', id: 1, attributes: snakePost },
       });
-      const resultPost = { __typename: 'Posts', id: 1, ...camelPost };
+      const resultPost = { __typename: 'posts', id: 1, ...camelPost };
 
       const createPostMutation = gql`
         fragment PublishablePostInput on REST {
@@ -3140,15 +3200,15 @@ describe('Playing nice with others', () => {
     );
     expect(restData).toEqual({
       posts: [
-        { title: 'Love apollo', __typename: 'Posts' },
-        { title: 'Respect apollo', __typename: 'Posts' },
+        { title: 'Love apollo', __typename: 'posts' },
+        { title: 'Respect apollo', __typename: 'posts' },
       ],
     });
     expect(httpData).toEqual({ authors: [{ id: 1 }, { id: 2 }, { id: 3 }] });
     expect(combinedData).toEqual({
       people: [
-        { title: 'Love apollo', __typename: 'Posts' },
-        { title: 'Respect apollo', __typename: 'Posts' },
+        { title: 'Love apollo', __typename: 'posts' },
+        { title: 'Respect apollo', __typename: 'posts' },
       ],
       authors: [{ id: 1 }, { id: 2 }, { id: 3 }],
     });
@@ -3183,11 +3243,11 @@ describe('Playing nice with others', () => {
       authors: [
         {
           id: 1,
-          posts: [{ title: 'Love apollo', __typename: 'Post' }],
+          posts: [{ title: 'Love apollo', __typename: 'post' }],
         },
         {
           id: 2,
-          posts: [{ title: 'Respect apollo', __typename: 'Post' }],
+          posts: [{ title: 'Respect apollo', __typename: 'post' }],
         },
         {
           id: 3,
@@ -3220,8 +3280,8 @@ describe('Playing nice with others', () => {
 
     expect(combinedData).toEqual({
       people: [
-        { title: 'Love apollo', __typename: 'Posts' },
-        { title: 'Respect apollo', __typename: 'Posts' },
+        { title: 'Love apollo', __typename: 'posts' },
+        { title: 'Respect apollo', __typename: 'posts' },
       ],
     });
 
@@ -3252,8 +3312,8 @@ describe('Playing nice with others', () => {
     );
     expect(combinedData).toEqual({
       posts: [
-        { title: 'Love apollo', __typename: 'Posts' },
-        { title: 'Respect apollo', __typename: 'Posts' },
+        { title: 'Love apollo', __typename: 'posts' },
+        { title: 'Respect apollo', __typename: 'posts' },
       ],
       lastViewedAuthor: {
         id: 2,
@@ -3285,8 +3345,8 @@ describe('Playing nice with others', () => {
       lastViewedAuthor: {
         id: 2,
         people: [
-          { title: 'Love apollo', __typename: 'Posts' },
-          { title: 'Respect apollo', __typename: 'Posts' },
+          { title: 'Love apollo', __typename: 'posts' },
+          { title: 'Respect apollo', __typename: 'posts' },
         ],
       },
     });

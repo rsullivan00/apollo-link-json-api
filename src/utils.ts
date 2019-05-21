@@ -33,3 +33,5 @@ export const mapObject = (obj, fn) =>
       acc[k] = v;
       return acc;
     }, {});
+
+export const identity = v => v;
