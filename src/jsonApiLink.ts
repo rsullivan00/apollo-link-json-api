@@ -322,6 +322,7 @@ function insertNullsForAnyOmittedFields(
   currentSelectionSet: SelectionSetNode,
 ): void {
   if (
+    currentSelectionSet == null ||
     null == current ||
     typeof current === 'number' ||
     typeof current === 'boolean' ||
