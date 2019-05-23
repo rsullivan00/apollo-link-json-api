@@ -16,3 +16,8 @@
 
 * Improves 204 handling so that Apollo doesn't complain about `__typename`
     missing.
+
+### v0.0.4
+
+* Fix case where `included` key can be omitted if sideloaded resources are
+    requested, but none exist.
