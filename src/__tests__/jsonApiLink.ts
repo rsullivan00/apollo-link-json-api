@@ -591,6 +591,49 @@ describe('Query single call', () => {
     });
   });
 
+  it('handles empty included relationships', async () => {
+    expect.assertions(1);
+
+    const link = new JsonApiLink({ uri: '/api' });
+    const author = {
+      id: '1',
+      type: 'authors',
+      attributes: { name: 'George R. R. Martin' },
+      relationships: { books: { data: [] } },
+    };
+
+    fetchMock.get('/api/authors/1?include=books', {
+      data: author,
+    });
+
+    const query = gql`
+      query authorQuery {
+        author @jsonapi(path: "/authors/1?include=books") {
+          id
+          books {
+            id
+            title
+          }
+        }
+      }
+    `;
+
+    const { data } = await makePromise<Result>(
+      execute(link, {
+        operationName: 'authorQuery',
+        query,
+      }),
+    );
+
+    expect(data).toMatchObject({
+      author: {
+        __typename: 'authors',
+        id: author.id,
+        books: [],
+      },
+    });
+  });
+
   it('ignores relationship and data links', async () => {
     expect.assertions(1);
 
