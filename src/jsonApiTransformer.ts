@@ -108,10 +108,7 @@ const _denormalizeRelationships = (
   return { ...data, relationships };
 };
 
-const denormalizeRelationships = (data: Resource, { included }) => {
-  if (!included) {
-    return data;
-  }
+const denormalizeRelationships = (data: Resource, { included = [] }) => {
   return _denormalizeRelationships(data, [data, ...included]);
 };
 
