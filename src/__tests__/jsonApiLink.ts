@@ -642,7 +642,10 @@ describe('Query single call', () => {
       id: '1',
       type: 'authors',
       attributes: { name: 'George R. R. Martin' },
-      relationships: { books: { data: [{ id: '2', type: 'books' }] } },
+      relationships: {
+        books: { data: [{ id: '2', type: 'books' }] },
+        photo: { data: { id: '3', type: 'photos' } },
+      },
     };
 
     fetchMock.get('/api/authors/1', {
@@ -654,6 +657,9 @@ describe('Query single call', () => {
         author @jsonapi(path: "/authors/1") {
           id
           books {
+            id
+          }
+          photo {
             id
           }
         }
@@ -672,6 +678,7 @@ describe('Query single call', () => {
         __typename: 'authors',
         id: author.id,
         books: [{ id: '2' }],
+        photo: { id: '3' },
       },
     });
   });
