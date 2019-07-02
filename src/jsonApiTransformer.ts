@@ -62,13 +62,11 @@ const flattenResource = ({
 const findResource = (
   { id, type }: ResourceIdentifier,
   resources: Array<Resource>,
-) => {
-  const result = resources.find(
+) =>
+  resources.find(
     ({ id: resourceId, type: resourceType }) =>
       id === resourceId && type === resourceType,
   );
-  return result;
-};
 
 const _denormalizeRelationships = (
   data: Resource,
@@ -90,7 +88,7 @@ const _denormalizeRelationships = (
           relationshipName,
           related.data.map(item =>
             _denormalizeRelationships(
-              findResource(item, allResources),
+              findResource(item, allResources) || item,
               allResources,
             ),
           ),
@@ -99,7 +97,7 @@ const _denormalizeRelationships = (
       return [
         relationshipName,
         _denormalizeRelationships(
-          findResource(related.data, allResources),
+          findResource(related.data, allResources) || related.data,
           allResources,
         ),
       ];

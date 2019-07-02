@@ -634,6 +634,48 @@ describe('Query single call', () => {
     });
   });
 
+  it('handles identifier objects in relationships', async () => {
+    expect.assertions(1);
+
+    const link = new JsonApiLink({ uri: '/api' });
+    const author = {
+      id: '1',
+      type: 'authors',
+      attributes: { name: 'George R. R. Martin' },
+      relationships: { books: { data: [{ id: '2', type: 'books' }] } },
+    };
+
+    fetchMock.get('/api/authors/1', {
+      data: author,
+    });
+
+    const query = gql`
+      query authorQuery {
+        author @jsonapi(path: "/authors/1") {
+          id
+          books {
+            id
+          }
+        }
+      }
+    `;
+
+    const { data } = await makePromise<Result>(
+      execute(link, {
+        operationName: 'authorQuery',
+        query,
+      }),
+    );
+
+    expect(data).toMatchObject({
+      author: {
+        __typename: 'authors',
+        id: author.id,
+        books: [{ id: '2' }],
+      },
+    });
+  });
+
   it('ignores relationship and data links', async () => {
     expect.assertions(1);
 
