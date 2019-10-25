@@ -1,6 +1,6 @@
 import { mapObject, pipe } from './utils';
 import { JsonApiLink } from './jsonApiLink';
-import { JsonApiBody, Resource, ResourceIdentifier } from './jsonApi';
+import { JsonApiBody, Resource, ResourceIdentifier } from './types';
 
 const flattenResource = ({
   attributes,
