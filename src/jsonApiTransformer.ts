@@ -1,35 +1,6 @@
-import { mapObject } from './utils';
+import { mapObject, pipe } from './utils';
 import { JsonApiLink } from './jsonApiLink';
-
-interface ResourceIdentifier {
-  id: string;
-  type: string;
-}
-
-type RelationshipData = ResourceIdentifier | Array<ResourceIdentifier>;
-
-interface RelationshipInfo {
-  links: object;
-  data?: RelationshipData;
-}
-
-interface Relationships {
-  [relationshipName: string]: RelationshipInfo;
-}
-
-interface Resource {
-  id: string;
-  type: string;
-  links: object;
-  attributes: object;
-  relationships?: Relationships;
-  __relationships_denormalizing?: boolean;
-}
-
-interface JsonApiBody {
-  data: Resource | Array<Resource>;
-  included?: Array<Resource> | undefined;
-}
+import { JsonApiBody, Resource, ResourceIdentifier } from './jsonApi';
 
 const flattenResource = ({
   attributes,
@@ -131,16 +102,17 @@ const applyNormalizer = (normalizer: JsonApiLink.TypeNameNormalizer) => (
   ...resource,
 });
 
-const jsonapiResponseTransformer = async (
-  response: Response,
+// TODO: Can we remove the normalizer application from here?
+const jsonapiResponseTransformer = (
+  body: JsonApiBody,
   typeNameNormalizer: JsonApiLink.TypeNameNormalizer,
-) =>
-  response
-    .json()
-    .then(applyToIncluded(applyNormalizer(typeNameNormalizer)))
-    .then(applyToData(applyNormalizer(typeNameNormalizer)))
-    .then(applyToData(denormalizeRelationships))
-    .then(applyToData(flattenResource))
-    .then(({ data, included }) => data);
+): object =>
+  pipe(
+    applyToIncluded(applyNormalizer(typeNameNormalizer)),
+    applyToData(applyNormalizer(typeNameNormalizer)),
+    applyToData(denormalizeRelationships),
+    applyToData(flattenResource),
+    ({ data }) => data,
+  )(body);
 
 export default jsonapiResponseTransformer;

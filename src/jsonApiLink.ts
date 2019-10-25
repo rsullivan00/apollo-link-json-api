@@ -26,6 +26,7 @@ import {
   resultKeyNameFromField,
 } from 'apollo-utilities';
 import jsonApiTransformer from './jsonApiTransformer';
+import { JsonApiBody } from './jsonApi';
 
 import { graphql } from 'graphql-anywhere/lib/async';
 import { Resolver, ExecInfo } from 'graphql-anywhere';
@@ -747,6 +748,50 @@ const addTypeToNode = (node, typename) => {
   });
 };
 
+const parseResponse = async (
+  response: Response,
+): Promise<JsonApiBody | null> => {
+  if (response.ok) {
+    if (
+      response.status === 204 ||
+      response.headers.get('Content-Length') === '0'
+    ) {
+      // HTTP-204 means "no-content", similarly Content-Length implies the same
+      // This commonly occurs when you POST/PUT to the server, and it acknowledges
+      // success, but doesn't return your Resource.
+      return null;
+    } else {
+      try {
+        return await response.json();
+      } catch (err) {
+        console.warn('An error occurred in jsonApiTransformer:');
+        throw err;
+      }
+    }
+  }
+  if (response.status === 404) {
+    // In a GraphQL context a missing resource should be indicated by
+    // a null value rather than throwing a network error
+    return null;
+  }
+  // Default error handling:
+  // Throw a JSError, that will be available under the
+  // "Network error" category in apollo-link-error
+  let parsed: any;
+  // responses need to be cloned as they can only be read once
+  try {
+    parsed = await response.clone().json();
+  } catch (error) {
+    // its not json
+    parsed = await response.clone().text();
+  }
+  rethrowServerSideError(
+    response,
+    parsed,
+    `Response not successful: Received status code ${response.status}`,
+  );
+};
+
 const resolver: Resolver = async (
   fieldName: string,
   root: any,
@@ -760,7 +805,7 @@ const resolver: Resolver = async (
   const exportVariables = exportVariablesByNode.get(root) || {};
 
   /** creates a copy of this node's export variables for its child nodes. iterates over array results to provide for each child. returns the passed result. */
-  const copyExportVariables = <T>(result: T): T => {
+  const copyExportVariables = result => {
     if (result instanceof Array) {
       result.forEach(copyExportVariables);
     } else {
@@ -883,46 +928,14 @@ const resolver: Resolver = async (
   const response = await (customFetch || fetch)(requestUrl, requestParams);
   context.responses.push(response);
 
-  let result;
-  if (response.ok) {
-    if (
-      response.status === 204 ||
-      response.headers.get('Content-Length') === '0'
-    ) {
-      // HTTP-204 means "no-content", similarly Content-Length implies the same
-      // This commonly occurs when you POST/PUT to the server, and it acknowledges
-      // success, but doesn't return your Resource.
-      result = {};
-    } else {
-      try {
-        result = await jsonApiTransformer(response, typeNameNormalizer);
-      } catch (err) {
-        console.warn('An error occurred in jsonApiTransformer:');
-        throw err;
-      }
-    }
-  } else if (response.status === 404) {
-    // In a GraphQL context a missing resource should be indicated by
-    // a null value rather than throwing a network error
-    result = null;
-  } else {
-    // Default error handling:
-    // Throw a JSError, that will be available under the
-    // "Network error" category in apollo-link-error
-    let parsed: any;
-    // responses need to be cloned as they can only be read once
-    try {
-      parsed = await response.clone().json();
-    } catch (error) {
-      // its not json
-      parsed = await response.clone().text();
-    }
-    rethrowServerSideError(
-      response,
-      parsed,
-      `Response not successful: Received status code ${response.status}`,
-    );
+  const responseBody = await parseResponse(response);
+  if (!responseBody) {
+    return null;
   }
+  let result = jsonApiTransformer(
+    responseBody as JsonApiBody,
+    typeNameNormalizer,
+  );
 
   if (fieldNameNormalizer !== null) {
     result = convertObjectKeys(result, fieldNameNormalizer);

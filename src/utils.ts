@@ -35,3 +35,9 @@ export const mapObject = (obj, fn) =>
     }, {});
 
 export const identity = v => v;
+
+export const pipe = (f1: Function, ...fns: Function[]): Function =>
+  fns.reduce((prev, next) => val => next(prev(val)), f1);
+
+export const compose = (f1: Function, ...fns: Function[]): Function =>
+  fns.reduce((prev, next) => val => prev(next(val)), f1);
