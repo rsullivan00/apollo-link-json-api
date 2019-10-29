@@ -11,7 +11,7 @@ const globals = {
   'graphql-anywhere': 'graphqlAnywhere',
   'graphql-anywhere/lib/async': 'graphqlAnywhere.async',
   humps: 'humps',
-  qa: 'qs',
+  qs: 'qs',
 };
 
 export default {
