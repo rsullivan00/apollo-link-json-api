@@ -26,6 +26,7 @@ import {
   resultKeyNameFromField,
 } from 'apollo-utilities';
 import jsonApiTransformer from './jsonApiTransformer';
+import global from './global';
 
 import { graphql } from 'graphql-anywhere/lib/async';
 import { Resolver, ExecInfo } from 'graphql-anywhere';
@@ -539,8 +540,8 @@ const convertObjectKeys = (
   // FileList/File are only available in some browser contexts
   // Notably: *not available* in react-native.
   if (
-    (window.FileList && object instanceof window.FileList) ||
-    (window.File && object instanceof window.File)
+    ((global as any).FileList && object instanceof FileList) ||
+    ((global as any).File && object instanceof File)
   ) {
     // Object is a FileList or File object => no keys to convert!
     return object;
