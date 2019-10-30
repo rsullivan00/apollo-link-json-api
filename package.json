@@ -22,6 +22,7 @@
     "coverage:upload": "codecov",
     "danger": "danger run --verbose",
     "deploy": "./scripts/deploy.sh",
+    "filesize": "npm run build && bundlesize",
     "lint": "prettier --write 'src/**/*.{j,t}s*'",
     "lint-staged": "lint-staged",
     "postbuild": "npm run bundle",
