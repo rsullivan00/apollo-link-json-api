@@ -2493,22 +2493,19 @@ describe('Mutation', () => {
     });
   });
 
-  // TODO: Update these tests after breaking changes - Rick
-  describe.skip('fieldNameDenormalizer', () => {
+  describe('fieldNameDenormalizer', () => {
     afterEach(() => {
       fetchMock.restore();
     });
 
     it('corrects names to decamelize for link-level denormalizer', async () => {
       expect.assertions(3);
-
       const link = new JsonApiLink({
         uri: '/api',
         fieldNameNormalizer: name => camelize(name),
         fieldNameDenormalizer: name => decamelize(name),
       });
-
-      const snakePost = { title_string: 'Love apollo', category_id: 6 };
+      const snakePost = { title_string: 'Love apollo', category_id: '6' };
       fetchMock.post('/api/posts', {
         data: {
           id: '1',
@@ -2516,15 +2513,18 @@ describe('Mutation', () => {
           attributes: snakePost,
         },
       });
-      const camelPost = { titleString: 'Love apollo', categoryId: 6 };
-
+      const camelPost = { titleString: 'Love apollo', categoryId: '6' };
       const createPostMutation = gql`
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
             @jsonapi(path: "/posts", method: "POST") {
-            id
-            titleString
-            categoryId
+            data {
+              id
+              attributes {
+                titleString
+                categoryId
+              }
+            }
           }
         }
       `;
@@ -2540,7 +2540,6 @@ describe('Mutation', () => {
       );
 
       const requestCall = fetchMock.calls('/api/posts')[0];
-
       expect(requestCall[1]).toEqual(
         expect.objectContaining({
           method: 'POST',
@@ -2552,27 +2551,24 @@ describe('Mutation', () => {
           attributes: snakePost,
         },
       });
-
       expect(response.data.publishedPost).toEqual(
-        expect.objectContaining({ ...camelPost, id: '1', __typename: 'posts' }),
+        expect.objectContaining({
+          data: { attributes: camelPost, id: '1', __typename: 'posts' },
+        }),
       );
     });
 
     it('corrects names to decamelize for request-level denormalizer', async () => {
       expect.assertions(3);
-
       const link = new JsonApiLink({
         uri: '/api',
         fieldNameNormalizer: camelize,
       });
-
-      const snakePost = { title_string: 'Love apollo', category_id: 6 };
-      const camelPost = { titleString: 'Love apollo', categoryId: 6 };
+      const snakePost = { title_string: 'Love apollo', category_id: '6' };
+      const camelPost = { titleString: 'Love apollo', categoryId: '6' };
       fetchMock.post('/api/posts', {
-        data: { type: 'posts', id: 1, attributes: snakePost },
+        data: { type: 'posts', id: '1', attributes: snakePost },
       });
-      const resultPost = { __typename: 'posts', id: 1, ...camelPost };
-
       const createPostMutation = gql`
         fragment PublishablePostInput on REST {
           titleString: String
@@ -2586,9 +2582,13 @@ describe('Mutation', () => {
               method: "POST"
               fieldNameDenormalizer: $requestLevelDenormalizer
             ) {
-            id
-            titleString
-            categoryId
+            data {
+              id
+              attributes {
+                titleString
+                categoryId
+              }
+            }
           }
         }
       `;
@@ -2605,7 +2605,6 @@ describe('Mutation', () => {
       );
 
       const requestCall = fetchMock.calls('/api/posts')[0];
-
       expect(requestCall[1]).toEqual(
         expect.objectContaining({
           method: 'POST',
@@ -2617,10 +2616,9 @@ describe('Mutation', () => {
           attributes: snakePost,
         },
       });
-
-      expect(response.data.publishedPost).toEqual(
-        expect.objectContaining(resultPost),
-      );
+      expect(response.data.publishedPost).toEqual({
+        data: { __typename: 'posts', id: '1', attributes: camelPost },
+      });
     });
   });
 
