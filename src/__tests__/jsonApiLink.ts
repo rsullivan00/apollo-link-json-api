@@ -2147,8 +2147,7 @@ describe('Query options', () => {
   });
 });
 
-// TODO: Update these tests after breaking changes - Rick
-describe.skip('Mutation', () => {
+describe('Mutation', () => {
   describe('basic support', () => {
     afterEach(() => {
       fetchMock.restore();
@@ -2156,28 +2155,28 @@ describe.skip('Mutation', () => {
 
     it('supports POST requests', async () => {
       expect.assertions(2);
-
       const link = new JsonApiLink({ uri: '/api' });
-
       const post = {
         data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
       };
       fetchMock.post('/api/posts', post);
-      const resultPost = { __typename: 'posts', id: '1', title: 'Love apollo' };
-
       const createPostMutation = gql`
         fragment PublishablePostInput on REST {
           title: String
         }
-
         mutation publishPost($input: PublishablePostInput!) {
           publishedPost(input: $input)
             @jsonapi(path: "/posts", method: "POST") {
-            id
-            title
+            data {
+              id
+              attributes {
+                title
+              }
+            }
           }
         }
       `;
+
       const response = await makePromise<Result>(
         execute(link, {
           operationName: 'publishPost',
@@ -2185,8 +2184,14 @@ describe.skip('Mutation', () => {
           variables: { input: { title: post.data.attributes.title } },
         }),
       );
-      expect(response.data.publishedPost).toEqual(resultPost);
 
+      expect(response.data.publishedPost).toEqual({
+        data: {
+          id: '1',
+          __typename: 'posts',
+          attributes: { title: 'Love apollo' },
+        },
+      });
       const requestCall = fetchMock.calls('/api/posts')[0];
       expect(requestCall[1]).toEqual(
         expect.objectContaining({ method: 'POST' }),
@@ -2195,26 +2200,25 @@ describe.skip('Mutation', () => {
 
     it('supports PUT requests', async () => {
       expect.assertions(2);
-
       const link = new JsonApiLink({ uri: '/api' });
-
       const post = {
         data: { type: 'posts', id: '1', attributes: { title: 'Love apollo' } },
       };
       fetchMock.put('/api/posts/1', post);
-      const resultPost = { __typename: 'posts', id: '1', title: 'Love apollo' };
-
       const replacePostMutation = gql`
         fragment ReplaceablePostInput on REST {
           id: ID
           title: String
         }
-
         mutation changePost($id: ID!, $input: ReplaceablePostInput!) {
           replacedPost(id: $id, input: $input)
             @jsonapi(path: "/posts/{args.id}", method: "PUT") {
-            id
-            title
+            data {
+              id
+              attributes {
+                title
+              }
+            }
           }
         }
       `;
@@ -2226,8 +2230,14 @@ describe.skip('Mutation', () => {
           variables: { id: post.data.id, input: post },
         }),
       );
-      expect(response.data.replacedPost).toEqual(resultPost);
 
+      expect(response.data.replacedPost).toEqual({
+        data: {
+          __typename: 'posts',
+          id: '1',
+          attributes: { title: 'Love apollo' },
+        },
+      });
       const requestCall = fetchMock.calls('/api/posts/1')[0];
       expect(requestCall[1]).toEqual(
         expect.objectContaining({ method: 'PUT' }),
@@ -2236,9 +2246,7 @@ describe.skip('Mutation', () => {
 
     it('supports PATCH requests', async () => {
       expect.assertions(2);
-
       const link = new JsonApiLink({ uri: '/api' });
-
       const post = {
         data: {
           type: 'posts',
@@ -2247,26 +2255,22 @@ describe.skip('Mutation', () => {
         },
       };
       fetchMock.patch('/api/posts/1', post);
-      const resultPost = {
-        __typename: 'posts',
-        id: '1',
-        title: 'Love apollo',
-        categoryId: 6,
-      };
-
       const editPostMutation = gql`
         fragment PartialPostInput on REST {
           id: ID
           title: String
           categoryId: Number
         }
-
         mutation editPost($id: ID!, $input: PartialPostInput!) {
           editedPost(id: $id, input: $input)
             @jsonapi(path: "/posts/{args.id}", method: "PATCH") {
-            id
-            title
-            categoryId
+            data {
+              id
+              attributes {
+                title
+                categoryId
+              }
+            }
           }
         }
       `;
@@ -2281,8 +2285,17 @@ describe.skip('Mutation', () => {
           },
         }),
       );
-      expect(response.data.editedPost).toEqual(resultPost);
 
+      expect(response.data.editedPost).toEqual({
+        data: {
+          __typename: 'posts',
+          id: '1',
+          attributes: {
+            title: 'Love apollo',
+            categoryId: 6,
+          },
+        },
+      });
       const requestCall = fetchMock.calls('/api/posts/1')[0];
       expect(requestCall[1]).toEqual(
         expect.objectContaining({ method: 'PATCH' }),
@@ -2291,11 +2304,8 @@ describe.skip('Mutation', () => {
 
     it('supports DELETE requests', async () => {
       expect.assertions(1);
-
       const link = new JsonApiLink({ uri: '/api' });
-
       fetchMock.delete('/api/posts/1', { status: 204 });
-
       const deletePostMutation = gql`
         mutation deletePost($id: ID!) {
           deletePostResponse(id: $id)
@@ -2304,6 +2314,7 @@ describe.skip('Mutation', () => {
           }
         }
       `;
+
       await makePromise<Result>(
         execute(link, {
           operationName: 'deletePost',
