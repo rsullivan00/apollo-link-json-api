@@ -8,9 +8,21 @@ interface ResourceIdentifier {
 
 type RelationshipData = ResourceIdentifier | Array<ResourceIdentifier>;
 
+interface LinkObject {
+  href?: string;
+  meta?: object;
+}
+
+type Link = string | LinkObject;
+
+interface Links {
+  [key: string]: Link;
+}
+
 interface RelationshipInfo {
-  links: object;
+  links?: Links;
   data?: RelationshipData;
+  meta?: object;
 }
 
 interface Relationships {
@@ -20,44 +32,21 @@ interface Relationships {
 interface Resource {
   id: string;
   type: string;
-  links: object;
-  attributes: object;
+  attributes?: object;
+  links?: Links;
+  meta?: object;
   relationships?: Relationships;
   __relationships_denormalizing?: boolean;
 }
 
 interface JsonApiBody {
-  data: Resource | Array<Resource>;
+  data?: Resource | Array<Resource>;
   included?: Array<Resource> | undefined;
+  meta?: object;
+  errors?: Array<Error>;
+  links?: Links;
+  jsonapi?: object;
 }
-
-const flattenResource = ({
-  attributes,
-  relationships,
-  links,
-  ...restResource
-}: Resource) => {
-  if (!relationships) {
-    return {
-      ...restResource,
-      ...attributes,
-    };
-  }
-  const flattenedRelationships = mapObject(relationships, ([k, related]) => {
-    if (!related) {
-      return [k, related];
-    }
-    if (Array.isArray(related)) {
-      return [k, related.map(flattenResource)];
-    }
-    return [k, flattenResource(related)];
-  });
-  return {
-    ...restResource,
-    ...attributes,
-    ...flattenedRelationships,
-  };
-};
 
 const findResource = (
   { id, type }: ResourceIdentifier,
@@ -68,6 +57,7 @@ const findResource = (
       id === resourceId && type === resourceType,
   );
 
+// TODO: The `findResource` lookups could be sped up by using a map instead
 const _denormalizeRelationships = (
   data: Resource,
   allResources: Array<Resource>,
@@ -81,25 +71,31 @@ const _denormalizeRelationships = (
     data.relationships,
     ([relationshipName, related]) => {
       if (!related.data) {
-        return [relationshipName, null];
+        return [relationshipName, related];
       }
       if (Array.isArray(related.data)) {
         return [
           relationshipName,
-          related.data.map(item =>
-            _denormalizeRelationships(
-              findResource(item, allResources) || item,
-              allResources,
+          {
+            ...related,
+            data: related.data.map(item =>
+              _denormalizeRelationships(
+                findResource(item, allResources) || item,
+                allResources,
+              ),
             ),
-          ),
+          },
         ];
       }
       return [
         relationshipName,
-        _denormalizeRelationships(
-          findResource(related.data, allResources) || related.data,
-          allResources,
-        ),
+        {
+          ...related,
+          data: _denormalizeRelationships(
+            findResource(related.data, allResources) || related.data,
+            allResources,
+          ),
+        },
       ];
     },
   );
@@ -139,8 +135,6 @@ const jsonapiResponseTransformer = async (
     .json()
     .then(applyToIncluded(applyNormalizer(typeNameNormalizer)))
     .then(applyToData(applyNormalizer(typeNameNormalizer)))
-    .then(applyToData(denormalizeRelationships))
-    .then(applyToData(flattenResource))
-    .then(({ data, included }) => data);
+    .then(applyToData(denormalizeRelationships));
 
 export default jsonapiResponseTransformer;
