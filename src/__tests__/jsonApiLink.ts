@@ -495,6 +495,82 @@ describe('Query single call', () => {
     expect(data.post.data.attributes.content).toBeUndefined();
   });
 
+  it('can access top-level links', async () => {
+    expect.assertions(1);
+    const link = new JsonApiLink({ uri: '/api' });
+    const post = {
+      data: {
+        id: '1',
+        type: 'posts',
+        attributes: { title: 'Love apollo' },
+      },
+      links: {
+        self: '/posts/1',
+      },
+    };
+    fetchMock.get('/api/post/1', post);
+    const postTitleQuery = gql`
+      query postTitle {
+        post @jsonapi(path: "/post/1") {
+          links {
+            self
+          }
+        }
+      }
+    `;
+
+    const { data } = await makePromise<Result>(
+      execute(link, {
+        operationName: 'postTitle',
+        query: postTitleQuery,
+      }),
+    );
+
+    expect(data).toMatchObject({
+      post: {
+        links: { self: post.links.self },
+      },
+    });
+  });
+
+  it('can access top-level meta', async () => {
+    expect.assertions(1);
+    const link = new JsonApiLink({ uri: '/api' });
+    const post = {
+      data: {
+        id: '1',
+        type: 'posts',
+        attributes: { title: 'Love apollo' },
+      },
+      meta: {
+        my: 'stuff',
+      },
+    };
+    fetchMock.get('/api/post/1', post);
+    const metaQuery = gql`
+      query metaQuery {
+        post @jsonapi(path: "/post/1") {
+          meta {
+            my
+          }
+        }
+      }
+    `;
+
+    const { data } = await makePromise<Result>(
+      execute(link, {
+        operationName: 'metaQuery',
+        query: metaQuery,
+      }),
+    );
+
+    expect(data).toMatchObject({
+      post: {
+        meta: { my: 'stuff' },
+      },
+    });
+  });
+
   it('can pass param to a query with a variable', async () => {
     expect.assertions(1);
     const link = new JsonApiLink({ uri: '/api' });
