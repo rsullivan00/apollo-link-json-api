@@ -47,7 +47,7 @@ interface JsonApiBody {
   links?: Links;
   jsonapi?: object;
 
-  jsonapiFullResponse?: JsonApiBody;
+  __jsonapi_full_response?: JsonApiBody;
 }
 
 const flattenResource = ({
@@ -124,11 +124,11 @@ const applyToIncluded = fn => ({ included, ...rest }: JsonApiBody) => {
 };
 
 const applyToJsonapiFullResponse = fn => ({
-  jsonapiFullResponse,
+  __jsonapi_full_response,
   ...rest
 }: JsonApiBody) =>
-  jsonapiFullResponse
-    ? { jsonapiFullResponse: fn(jsonapiFullResponse), ...rest }
+  __jsonapi_full_response
+    ? { __jsonapi_full_response: fn(__jsonapi_full_response), ...rest }
     : (rest as JsonApiBody);
 
 const applyNormalizer = (normalizer: JsonApiLink.TypeNameNormalizer) => (
@@ -207,9 +207,10 @@ const typenameNamespacer = (prefix, normalizer) => {
 const preserveBody = normalizer => async (body: JsonApiBody) => {
   return {
     ...body,
-    jsonapiFullResponse: typenameNamespacer('jsonapiFullResponse_', normalizer)(
-      body,
-    ),
+    __jsonapi_full_response: typenameNamespacer(
+      'jsonapi_full_response_',
+      normalizer,
+    )(body),
   } as JsonApiBody;
 };
 
@@ -227,8 +228,10 @@ const jsonapiResponseTransformer = async (
     .then(applyToData(flattenResource))
     .then(applyToJsonapiFullResponse(applyToIncluded(denormalizeRelationships)))
     .then(applyToJsonapiFullResponse(applyToData(denormalizeRelationships)))
-    .then(({ data, jsonapiFullResponse }) =>
-      includeJsonapi ? { graphql: data, jsonapi: jsonapiFullResponse } : data,
+    .then(({ data, __jsonapi_full_response }) =>
+      includeJsonapi
+        ? { graphql: data, jsonapi: __jsonapi_full_response }
+        : data,
     );
 
 export default jsonapiResponseTransformer;
