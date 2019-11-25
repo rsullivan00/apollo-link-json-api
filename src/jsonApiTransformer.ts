@@ -1,4 +1,4 @@
-import { mapObject, identity } from './utils';
+import { mapObjectValues, identity } from './utils';
 import { JsonApiLink } from './jsonApiLink';
 
 interface ResourceIdentifier {
@@ -62,10 +62,10 @@ const flattenResource = ({
       ...attributes,
     };
   }
-  const flattenedRelationships = mapObject(relationships, ([k, related]) => [
-    k,
-    related && applyToData(flattenResource)(related).data,
-  ]);
+  const flattenedRelationships = mapObjectValues(
+    relationships,
+    related => related && applyToData(flattenResource)(related).data,
+  );
   return {
     ...restResource,
     ...attributes,
@@ -91,20 +91,16 @@ const _denormalizeRelationships = (
   }
   data.__relationships_denormalizing = true;
 
-  const relationships = mapObject(
+  const relationships = mapObjectValues(
     data.relationships,
-    ([relationshipName, related]) => {
-      if (!related.data) {
-        return [relationshipName, null];
-      }
-      const result = applyToData(item =>
+    related =>
+      related.data &&
+      applyToData(item =>
         _denormalizeRelationships(
           findResource(item, allResources) || item,
           allResources,
         ),
-      )(related);
-      return [relationshipName, result];
-    },
+      )(related),
   );
   return { ...data, relationships };
 };
@@ -162,12 +158,13 @@ const typenameNamespacer = (prefix, normalizer) => {
         __typename: normalizer(`${__typename}_attributes`),
       },
       relationships: relationships && {
-        ...mapObject(relationships, ([name, related]) => {
-          if (!related || !related.data) {
-            return [name, related];
-          }
-          return [name, applyToData(resourceTypenameNamespacer)(related)];
-        }),
+        ...mapObjectValues(
+          relationships,
+          related =>
+            related &&
+            related.data &&
+            applyToData(resourceTypenameNamespacer)(related),
+        ),
         __typename: normalizer(`${__typename}_relationships`),
       },
       meta: meta && {
