@@ -191,10 +191,13 @@ const applyToIncluded = fn => ({ included, ...rest }: JsonApiBody) => {
   return { included: included.map(obj => fn(obj, rest)), ...rest };
 };
 
-const applyToJsonapiFullResponse = fn => ({ jsonapiFullResponse, ...rest }) =>
+const applyToJsonapiFullResponse = fn => ({
+  jsonapiFullResponse,
+  ...rest
+}: JsonApiBody) =>
   jsonapiFullResponse
     ? { jsonapiFullResponse: fn(jsonapiFullResponse), ...rest }
-    : rest;
+    : (rest as JsonApiBody);
 
 const applyNormalizer = (normalizer: JsonApiLink.TypeNameNormalizer) => (
   resource: Resource,
@@ -290,18 +293,12 @@ const jsonapiResponseTransformer = async (
     .then(applyToData(denormalizeRelationships))
     .then(applyToData(flattenResource))
     .then(
-      includeJsonapi
-        ? applyToJsonapiFullResponse(
-            applyToIncluded(denormalizeJsonapiRelationships),
-          )
-        : identity,
+      applyToJsonapiFullResponse(
+        applyToIncluded(denormalizeJsonapiRelationships),
+      ),
     )
     .then(
-      includeJsonapi
-        ? applyToJsonapiFullResponse(
-            applyToData(denormalizeJsonapiRelationships),
-          )
-        : identity,
+      applyToJsonapiFullResponse(applyToData(denormalizeJsonapiRelationships)),
     )
     .then(({ data, jsonapiFullResponse }) =>
       includeJsonapi ? { graphql: data, jsonapi: jsonapiFullResponse } : data,
