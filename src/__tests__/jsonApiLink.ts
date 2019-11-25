@@ -407,7 +407,7 @@ describe('Query single call', () => {
     });
   });
 
-  it('can access full response structure', async () => {
+  it('can access top-level meta and links', async () => {
     expect.assertions(1);
     const link = new JsonApiLink({ uri: '/api' });
     const post = {
@@ -452,6 +452,115 @@ describe('Query single call', () => {
         jsonapi: {
           meta: { my: 'stuff' },
           links: { self: '/posts/1' },
+        },
+      },
+    });
+  });
+
+  it('can access full response structure', async () => {
+    expect.assertions(1);
+    const link = new JsonApiLink({ uri: '/api' });
+    const author = {
+      id: '2',
+      type: 'author',
+      attributes: {
+        name: 'John Irving',
+      },
+      meta: {
+        something: 'special',
+      },
+      links: {
+        self: '/authors/2',
+      },
+    };
+    const comment = {
+      id: '3',
+      type: 'comment',
+      attributes: { text: 'hi' },
+      links: { self: '/comments/3' },
+    };
+    const post = {
+      data: {
+        id: '1',
+        type: 'posts',
+        attributes: { title: 'Love apollo' },
+        relationships: {
+          author: {
+            data: {
+              id: author.id,
+              type: author.type,
+            },
+          },
+          comments: { data: [{ id: comment.id, type: comment.type }] },
+        },
+      },
+      included: [author, comment],
+    };
+    fetchMock.get('/api/post/1', post);
+    const postTitleQuery = gql`
+      query postTitle {
+        post @jsonapi(path: "/post/1", includeJsonapi: true) {
+          jsonapi {
+            data {
+              attributes {
+                title
+              }
+              relationships {
+                author {
+                  data {
+                    links {
+                      self
+                    }
+                    meta {
+                      something
+                    }
+                  }
+                }
+                comments {
+                  data {
+                    links {
+                      self
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const { data } = await makePromise<Result>(
+      execute(link, {
+        operationName: 'postTitle',
+        query: postTitleQuery,
+      }),
+    );
+
+    expect(data).toMatchObject({
+      post: {
+        jsonapi: {
+          data: {
+            attributes: {
+              title: post.data.attributes.title,
+            },
+            relationships: {
+              author: {
+                data: {
+                  links: {
+                    self: author.links.self,
+                  },
+                },
+              },
+              comments: {
+                data: [
+                  {
+                    links: { self: comment.links.self },
+                  },
+                ],
+              },
+            },
+          },
         },
       },
     });
