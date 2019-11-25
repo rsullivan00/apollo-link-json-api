@@ -102,23 +102,14 @@ const _denormalizeRelationships = (
       if (!related.data) {
         return [relationshipName, null];
       }
-      if (Array.isArray(related.data)) {
-        return [
-          relationshipName,
-          related.data.map(item =>
-            _denormalizeRelationships(
-              findResource(item, allResources) || item,
-              allResources,
-            ),
-          ),
-        ];
-      }
       return [
         relationshipName,
-        _denormalizeRelationships(
-          findResource(related.data, allResources) || related.data,
-          allResources,
-        ),
+        applyToData(item =>
+          _denormalizeRelationships(
+            findResource(item, allResources) || item,
+            allResources,
+          ),
+        )(related).data,
       ];
     },
   );
@@ -144,29 +135,14 @@ const _denormalizeJsonapiRelationships = (
       if (!related.data) {
         return [relationshipName, related];
       }
-      if (Array.isArray(related.data)) {
-        return [
-          relationshipName,
-          {
-            ...related,
-            data: related.data.map(item =>
-              _denormalizeJsonapiRelationships(
-                findResource(item, allResources) || item,
-                allResources,
-              ),
-            ),
-          },
-        ];
-      }
       return [
         relationshipName,
-        {
-          ...related,
-          data: _denormalizeJsonapiRelationships(
-            findResource(related.data, allResources) || related.data,
+        applyToData(item =>
+          _denormalizeJsonapiRelationships(
+            findResource(item, allResources) || item,
             allResources,
           ),
-        },
+        )(related),
       ];
     },
   );
