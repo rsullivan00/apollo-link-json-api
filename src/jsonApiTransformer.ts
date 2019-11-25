@@ -268,12 +268,11 @@ const typenameNamespacer = (prefix, normalizer) => {
   return bodyTypenameNamespacer;
 };
 
-const preserveBody = (normalizer, response) => async (body: JsonApiBody) => {
-  const bodyCopy = await response.json();
+const preserveBody = normalizer => async (body: JsonApiBody) => {
   return {
     ...body,
     jsonapiFullResponse: typenameNamespacer('jsonapiFullResponse_', normalizer)(
-      bodyCopy,
+      body,
     ),
   } as JsonApiBody;
 };
@@ -284,13 +283,10 @@ const jsonapiResponseTransformer = async (
   includeJsonapi: boolean,
 ) =>
   response
-    .clone()
     .json()
     .then(applyToIncluded(applyNormalizer(typeNameNormalizer)))
     .then(applyToData(applyNormalizer(typeNameNormalizer)))
-    .then(
-      includeJsonapi ? preserveBody(typeNameNormalizer, response) : identity,
-    )
+    .then(includeJsonapi ? preserveBody(typeNameNormalizer) : identity)
     .then(applyToData(denormalizeRelationships))
     .then(applyToData(flattenResource))
     .then(
@@ -309,10 +305,6 @@ const jsonapiResponseTransformer = async (
     )
     .then(({ data, jsonapiFullResponse }) =>
       includeJsonapi ? { graphql: data, jsonapi: jsonapiFullResponse } : data,
-    )
-    .then(a => {
-      console.log(a, a.jsonapi.data.attributes);
-      return a;
-    });
+    );
 
 export default jsonapiResponseTransformer;

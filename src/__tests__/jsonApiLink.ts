@@ -457,7 +457,7 @@ describe('Query single call', () => {
     });
   });
 
-  it('can access full response structure', async () => {
+  it('can access full response structure alongside flattened', async () => {
     expect.assertions(1);
     const link = new JsonApiLink({ uri: '/api' });
     const author = {
@@ -500,6 +500,15 @@ describe('Query single call', () => {
     const postTitleQuery = gql`
       query postTitle {
         post @jsonapi(path: "/post/1", includeJsonapi: true) {
+          graphql {
+            title
+            author {
+              name
+            }
+            comments {
+              text
+            }
+          }
           jsonapi {
             data {
               attributes {
@@ -539,6 +548,17 @@ describe('Query single call', () => {
 
     expect(data).toMatchObject({
       post: {
+        graphql: {
+          title: post.data.attributes.title,
+          author: {
+            name: author.attributes.name,
+          },
+          comments: [
+            {
+              text: comment.attributes.text,
+            },
+          ],
+        },
         jsonapi: {
           data: {
             attributes: {
