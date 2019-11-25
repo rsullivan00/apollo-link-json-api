@@ -90,6 +90,7 @@ const findResource = (
 const _denormalizeRelationships = (
   data: Resource,
   allResources: Array<Resource>,
+  flatten: boolean,
 ) => {
   if (!data || !data.relationships || data.__relationships_denormalizing) {
     return data;
@@ -102,55 +103,27 @@ const _denormalizeRelationships = (
       if (!related.data) {
         return [relationshipName, null];
       }
-      return [
-        relationshipName,
-        applyToData(item =>
-          _denormalizeRelationships(
-            findResource(item, allResources) || item,
-            allResources,
-          ),
-        )(related).data,
-      ];
-    },
-  );
-  return { ...data, relationships };
-};
-
-const denormalizeRelationships = (data: Resource, { included = [] }) => {
-  return _denormalizeRelationships(data, [data, ...included]);
-};
-
-const _denormalizeJsonapiRelationships = (
-  data: Resource,
-  allResources: Array<Resource>,
-) => {
-  if (!data || !data.relationships || data.__relationships_denormalizing) {
-    return data;
-  }
-  data.__relationships_denormalizing = true;
-
-  const relationships = mapObject(
-    data.relationships,
-    ([relationshipName, related]) => {
-      if (!related.data) {
-        return [relationshipName, related];
+      const result = applyToData(item =>
+        _denormalizeRelationships(
+          findResource(item, allResources) || item,
+          allResources,
+          flatten,
+        ),
+      )(related);
+      if (flatten) {
+        return [relationshipName, result.data];
       }
-      return [
-        relationshipName,
-        applyToData(item =>
-          _denormalizeJsonapiRelationships(
-            findResource(item, allResources) || item,
-            allResources,
-          ),
-        )(related),
-      ];
+      return [relationshipName, result];
     },
   );
   return { ...data, relationships };
 };
 
-const denormalizeJsonapiRelationships = (data: Resource, { included = [] }) => {
-  return _denormalizeJsonapiRelationships(data, [data, ...included]);
+const denormalizeRelationships = ({ flatten }) => (
+  data: Resource,
+  { included = [] },
+) => {
+  return _denormalizeRelationships(data, [data, ...included], flatten);
 };
 
 const applyToData = fn => ({ data, ...rest }: JsonApiBody) => {
@@ -266,15 +239,17 @@ const jsonapiResponseTransformer = async (
     .then(applyToIncluded(applyNormalizer(typeNameNormalizer)))
     .then(applyToData(applyNormalizer(typeNameNormalizer)))
     .then(includeJsonapi ? preserveBody(typeNameNormalizer) : identity)
-    .then(applyToData(denormalizeRelationships))
+    .then(applyToData(denormalizeRelationships({ flatten: true })))
     .then(applyToData(flattenResource))
     .then(
       applyToJsonapiFullResponse(
-        applyToIncluded(denormalizeJsonapiRelationships),
+        applyToIncluded(denormalizeRelationships({ flatten: false })),
       ),
     )
     .then(
-      applyToJsonapiFullResponse(applyToData(denormalizeJsonapiRelationships)),
+      applyToJsonapiFullResponse(
+        applyToData(denormalizeRelationships({ flatten: false })),
+      ),
     )
     .then(({ data, jsonapiFullResponse }) =>
       includeJsonapi ? { graphql: data, jsonapi: jsonapiFullResponse } : data,
