@@ -26,6 +26,7 @@ export function removeRestSetsFromDocument(query: DocumentNode): DocumentNode {
   return docClone;
 }
 
+// TODO: Make a `mapObjectValues` instead
 export const mapObject = (obj, fn) =>
   Object.entries(obj)
     .map(fn)
