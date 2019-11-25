@@ -407,6 +407,56 @@ describe('Query single call', () => {
     });
   });
 
+  it('can access full response structure', async () => {
+    expect.assertions(1);
+    const link = new JsonApiLink({ uri: '/api' });
+    const post = {
+      data: {
+        id: '1',
+        type: 'posts',
+        attributes: { title: 'Love apollo' },
+      },
+      meta: {
+        my: 'stuff',
+      },
+      links: {
+        self: '/posts/1',
+      },
+    };
+    fetchMock.get('/api/post/1', post);
+
+    const postTitleQuery = gql`
+      query postTitle {
+        post @jsonapi(path: "/post/1", includeJsonapi: true) {
+          jsonapi {
+            meta {
+              my
+            }
+            links {
+              self
+            }
+          }
+        }
+      }
+    `;
+
+    const { data } = await makePromise<Result>(
+      execute(link, {
+        operationName: 'postTitle',
+        query: postTitleQuery,
+      }),
+    );
+
+    expect(data).toMatchObject({
+      post: {
+        jsonapi: {
+          meta: { my: 'stuff' },
+          links: { self: '/posts/1' },
+        },
+      },
+    });
+  });
+
   it('can handle array results', async () => {
     expect.assertions(1);
 

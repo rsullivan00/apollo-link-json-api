@@ -1,4 +1,4 @@
-import { mapObject } from './utils';
+import { mapObject, identity } from './utils';
 import { JsonApiLink } from './jsonApiLink';
 
 interface ResourceIdentifier {
@@ -8,9 +8,21 @@ interface ResourceIdentifier {
 
 type RelationshipData = ResourceIdentifier | Array<ResourceIdentifier>;
 
+interface LinkObject {
+  href?: string;
+  meta?: object;
+}
+
+type Link = string | LinkObject;
+
+interface Links {
+  [key: string]: Link;
+}
+
 interface RelationshipInfo {
-  links: object;
+  links?: Links;
   data?: RelationshipData;
+  meta?: object;
 }
 
 interface Relationships {
@@ -20,15 +32,22 @@ interface Relationships {
 interface Resource {
   id: string;
   type: string;
-  links: object;
-  attributes: object;
+  attributes?: object;
+  links?: Links;
+  meta?: object;
   relationships?: Relationships;
   __relationships_denormalizing?: boolean;
 }
 
 interface JsonApiBody {
-  data: Resource | Array<Resource>;
+  data?: Resource | Array<Resource>;
   included?: Array<Resource> | undefined;
+  meta?: object;
+  errors?: Array<Error>;
+  links?: Links;
+  jsonapi?: object;
+
+  jsonapi_full_response?: JsonApiBody;
 }
 
 const flattenResource = ({
@@ -131,16 +150,89 @@ const applyNormalizer = (normalizer: JsonApiLink.TypeNameNormalizer) => (
   ...resource,
 });
 
+const typeFor = (data: Resource | Array<Resource>) =>
+  Array.isArray(data) ? data[0] && data[0].type : data.type;
+
+const typenameNamespacer = (prefix, normalizer) => {
+  const resourceTypenameNamespacer = ({
+    attributes,
+    relationships,
+    meta,
+    links,
+    ...resource
+  }: Resource) => {
+    const __typename = normalizer(`${prefix}${resource.type}`);
+    return {
+      ...resource,
+      __typename,
+      attributes: attributes && {
+        ...attributes,
+        __typename: normalizer(`${__typename}_attributes`),
+      },
+      relationships: relationships && {
+        ...relationships,
+        __typename: normalizer(`${__typename}_relationships`),
+      },
+      meta: meta && {
+        ...meta,
+        __typename: normalizer(`${__typename}_meta`),
+      },
+      links: links && {
+        ...links,
+        __typename: normalizer(`${__typename}_links`),
+      },
+    };
+  };
+
+  const bodyTypenameNamespacer = body => {
+    const type = typeFor(body.data) || 'unknown';
+    return {
+      data:
+        body.data &&
+        (Array.isArray(body.data)
+          ? body.data.map(resourceTypenameNamespacer)
+          : resourceTypenameNamespacer(body.data)),
+      meta: body.meta && {
+        ...body.meta,
+        __typename: normalizer(`${prefix}${type}_body_meta`),
+      },
+      links: body.links && {
+        ...body.links,
+        __typename: normalizer(`${prefix}${type}_body_links`),
+      },
+      included: body.included
+        ? body.included.map(resourceTypenameNamespacer)
+        : body.included,
+      __typename: normalizer(`${prefix}${type}_body`),
+    };
+  };
+
+  return bodyTypenameNamespacer;
+};
+
+const preserveBody = normalizer => (body: JsonApiBody) =>
+  ({
+    ...body,
+    jsonapi_full_response: typenameNamespacer(
+      'jsonapi_full_response_',
+      normalizer,
+    )(body),
+  } as JsonApiBody);
+
 const jsonapiResponseTransformer = async (
   response: Response,
   typeNameNormalizer: JsonApiLink.TypeNameNormalizer,
+  includeJsonapi: boolean,
 ) =>
   response
     .json()
     .then(applyToIncluded(applyNormalizer(typeNameNormalizer)))
     .then(applyToData(applyNormalizer(typeNameNormalizer)))
     .then(applyToData(denormalizeRelationships))
+    .then(includeJsonapi ? preserveBody(typeNameNormalizer) : identity)
     .then(applyToData(flattenResource))
-    .then(({ data, included }) => data);
+    .then(({ data, jsonapi_full_response }) =>
+      includeJsonapi ? { graphql: data, jsonapi: jsonapi_full_response } : data,
+    );
 
 export default jsonapiResponseTransformer;
