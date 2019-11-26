@@ -478,6 +478,7 @@ describe('Query single call', () => {
       type: 'comment',
       attributes: { text: 'hi' },
       links: { self: '/comments/3' },
+      relationships: { author: { links: { self: 'comments/3/author' } } },
     };
     const post = {
       data: {
@@ -548,6 +549,7 @@ describe('Query single call', () => {
 
     expect(data).toMatchObject({
       post: {
+        __typename: 'jsonapi_full_response_posts_body_wrapper',
         graphql: {
           title: post.data.attributes.title,
           author: {

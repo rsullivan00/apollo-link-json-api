@@ -48,6 +48,7 @@ interface JsonApiBody {
   jsonapi?: object;
 
   __jsonapi_full_response?: JsonApiBody;
+  __typename?: string;
 }
 
 const flattenResource = ({
@@ -64,7 +65,8 @@ const flattenResource = ({
   }
   const flattenedRelationships = mapObjectValues(
     relationships,
-    related => related && applyToData(flattenResource)(related).data,
+    related =>
+      related && related.data && applyToData(flattenResource)(related).data,
   );
   return {
     ...restResource,
@@ -94,6 +96,7 @@ const _denormalizeRelationships = (
   const relationships = mapObjectValues(
     data.relationships,
     related =>
+      related &&
       related.data &&
       applyToData(item =>
         _denormalizeRelationships(
@@ -205,12 +208,14 @@ const typenameNamespacer = (prefix, normalizer) => {
 };
 
 const preserveBody = normalizer => async (body: JsonApiBody) => {
+  const __jsonapi_full_response = typenameNamespacer(
+    'jsonapi_full_response_',
+    normalizer,
+  )(body);
   return {
     ...body,
-    __jsonapi_full_response: typenameNamespacer(
-      'jsonapi_full_response_',
-      normalizer,
-    )(body),
+    __typename: normalizer(`${__jsonapi_full_response.__typename}_wrapper`),
+    __jsonapi_full_response,
   } as JsonApiBody;
 };
 
@@ -228,9 +233,9 @@ const jsonapiResponseTransformer = async (
     .then(applyToData(flattenResource))
     .then(applyToJsonapiFullResponse(applyToIncluded(denormalizeRelationships)))
     .then(applyToJsonapiFullResponse(applyToData(denormalizeRelationships)))
-    .then(({ data, __jsonapi_full_response }) =>
+    .then(({ data, __jsonapi_full_response, __typename }) =>
       includeJsonapi
-        ? { graphql: data, jsonapi: __jsonapi_full_response }
+        ? { graphql: data, jsonapi: __jsonapi_full_response, __typename }
         : data,
     );
 
