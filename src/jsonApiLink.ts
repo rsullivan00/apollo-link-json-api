@@ -217,6 +217,14 @@ export namespace JsonApiLink {
      * @default Uses JsonApiLink.fieldNameDenormalizer
      */
     fieldNameDenormalizer?: JsonApiLink.FieldNameNormalizer;
+
+    /**
+     * Restructures the query result to give access to the full response.
+     * Puts the flattened resource(s) under a `graphql` key, and returns the
+     * original response body structure under a `jsonapi` key.
+     * @default false
+     */
+    includeJsonapi?: boolean;
   }
 }
 
@@ -846,9 +854,13 @@ const resolver: Resolver = async (
   let {
     method,
     fieldNameDenormalizer: perRequestNameDenormalizer,
+    includeJsonapi,
   } = directives.jsonapi as JsonApiLink.DirectiveOptions;
   if (!method) {
     method = 'GET';
+  }
+  if (!includeJsonapi) {
+    includeJsonapi = false;
   }
 
   let body = undefined;
@@ -896,7 +908,11 @@ const resolver: Resolver = async (
       result = {};
     } else {
       try {
-        result = await jsonApiTransformer(response, typeNameNormalizer);
+        result = await jsonApiTransformer(
+          response,
+          typeNameNormalizer,
+          includeJsonapi,
+        );
       } catch (err) {
         console.warn('An error occurred in jsonApiTransformer:');
         throw err;

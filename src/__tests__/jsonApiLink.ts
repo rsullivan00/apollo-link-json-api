@@ -407,6 +407,187 @@ describe('Query single call', () => {
     });
   });
 
+  it('can access top-level meta and links', async () => {
+    expect.assertions(1);
+    const link = new JsonApiLink({ uri: '/api' });
+    const post = {
+      data: {
+        id: '1',
+        type: 'posts',
+        attributes: { title: 'Love apollo' },
+      },
+      meta: {
+        my: 'stuff',
+      },
+      links: {
+        self: '/posts/1',
+      },
+    };
+    fetchMock.get('/api/post/1', post);
+
+    const postTitleQuery = gql`
+      query postTitle {
+        post @jsonapi(path: "/post/1", includeJsonapi: true) {
+          jsonapi {
+            meta {
+              my
+            }
+            links {
+              self
+            }
+          }
+        }
+      }
+    `;
+
+    const { data } = await makePromise<Result>(
+      execute(link, {
+        operationName: 'postTitle',
+        query: postTitleQuery,
+      }),
+    );
+
+    expect(data).toMatchObject({
+      post: {
+        jsonapi: {
+          meta: { my: 'stuff' },
+          links: { self: '/posts/1' },
+        },
+      },
+    });
+  });
+
+  it('can access full response structure alongside flattened', async () => {
+    expect.assertions(1);
+    const link = new JsonApiLink({ uri: '/api' });
+    const author = {
+      id: '2',
+      type: 'author',
+      attributes: {
+        name: 'John Irving',
+      },
+      meta: {
+        something: 'special',
+      },
+      links: {
+        self: '/authors/2',
+      },
+    };
+    const comment = {
+      id: '3',
+      type: 'comment',
+      attributes: { text: 'hi' },
+      links: { self: '/comments/3' },
+      relationships: { author: { links: { self: 'comments/3/author' } } },
+    };
+    const post = {
+      data: {
+        id: '1',
+        type: 'posts',
+        attributes: { title: 'Love apollo' },
+        relationships: {
+          author: {
+            data: {
+              id: author.id,
+              type: author.type,
+            },
+          },
+          comments: { data: [{ id: comment.id, type: comment.type }] },
+        },
+      },
+      included: [author, comment],
+    };
+    fetchMock.get('/api/post/1', post);
+    const postTitleQuery = gql`
+      query postTitle {
+        post @jsonapi(path: "/post/1", includeJsonapi: true) {
+          graphql {
+            title
+            author {
+              name
+            }
+            comments {
+              text
+            }
+          }
+          jsonapi {
+            data {
+              attributes {
+                title
+              }
+              relationships {
+                author {
+                  data {
+                    links {
+                      self
+                    }
+                    meta {
+                      something
+                    }
+                  }
+                }
+                comments {
+                  data {
+                    links {
+                      self
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const { data } = await makePromise<Result>(
+      execute(link, {
+        operationName: 'postTitle',
+        query: postTitleQuery,
+      }),
+    );
+
+    expect(data).toMatchObject({
+      post: {
+        __typename: 'jsonapi_full_response_posts_body_wrapper',
+        graphql: {
+          title: post.data.attributes.title,
+          author: {
+            name: author.attributes.name,
+          },
+          comments: [
+            {
+              text: comment.attributes.text,
+            },
+          ],
+        },
+        jsonapi: {
+          data: {
+            attributes: {
+              title: post.data.attributes.title,
+            },
+            relationships: {
+              author: {
+                data: {
+                  links: {
+                    self: author.links.self,
+                  },
+                },
+              },
+              comments: {
+                data: [
+                  {
+                    links: { self: comment.links.self },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+    });
+  });
+
   it('can handle array results', async () => {
     expect.assertions(1);
 

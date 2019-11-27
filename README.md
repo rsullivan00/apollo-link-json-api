@@ -182,6 +182,59 @@ JSON API Link uses the `headers` field on the context to allow passing headers t
 - `headers`: an object representing values to be sent as headers on the request
 - `credentials`: a string representing the credentials policy you want for the fetch call
 
+## Accessing metadata and links
+
+By default, this library flattens your server response. If you need to access
+values that are unavailable by this simple querying method, you can add
+`includeJsonapi: true` to your `@jsonapi` directive, which will instead return
+the flattened "GraphQL-like" structure under a `graphql` key, and the original
+response structure under a `jsonapi` key. Resources are still nested in a tree
+structure under the `jsonapi` key, but `data`/`attribute`/`relatioship` keys are
+not flattened out.
+
+```gql
+query authorsWithMeta {
+  authors @jsonapi(path: "authors?include=series", includeJsonapi: true) {
+    graphql {
+      name
+      series {
+        title
+      }
+    }
+
+    jsonapi {
+      meta {
+        pageCount
+      }
+      links {
+        first
+        last
+        current
+      }
+      // The resource data is available here, though it's probably easier to
+      // grab from the `graphql` structure
+      data {
+        attributes {
+          name
+        }
+        relationships {
+          series {
+            data {
+              attributes {
+                title
+              }
+            }
+            links {
+              related
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ## Contributing
 
 This project uses TypeScript to bring static types to JavaScript and uses Jest for testing. To get started, clone the repo and run the following commands:
